@@ -1,9 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Feb  2 14:12:22 2017
+"""psf_and_imageconv_dragonfly_obs.py -- determine zeropoint for airmass of 1 and embed ZPSPACE in header
 
-@author: wijers
+Usage:
+    psf_and_imageconv_dragonfly_obs [-h] [-v] [-k KERNEL] [-p PIXANGLE] [-c CENTRE] [-a ANGLE] <npzfile>
+Options:
+    -h, --help                                  Show this screen
+    -v, --verbose                               Show extra information [default: False]
+    -k KERNEL, --kernel KERNEL                  Name of the kernel to use. [default: Airy]
+    -p PIXANGLE, --pixangle PIXANGLE            angle subtended by an image pixel
+    -c CENTRE, --centre CENTRE                  centre on chip (pixel coordinates)
+    -a ANGLE, --angle ANGLE                     angle of chip long axis wrt image x-axis (radians)
+Examples:
+    psf_and_imageconv_dragonfly_obs -v emission.npz
 
+Created on Thu Feb  2 14:12:22 2017, modified Tue Sept 26 2017
+@author: wijers, modified by lokhorst
+
+Description:
 takes a .npz box (region) projection from make_maps, convolves with a PSF, 
 selects a region if needed
 
@@ -16,6 +29,7 @@ output:
  - photon counts or ergs per second (as in input file) per pixel
 """
 
+import docopt
 import numpy as np
 import astropy as asp
 import astropy.convolution as cnv
@@ -67,6 +81,10 @@ wavelengths = {'halpha': 656.28*nm}
 def SB_photonscgs_to_ABmagarcsec(sb):
     fld = sb * cons.planck * (4*np.pi)/3600**2 # flux density: energy / (m**2 s)  /frequency (/arcmin**2)  sufrace brightness: photons / (cm**2 s) /sr       
     return -2.5*np.log10(fld/(3631.*Jy))
+
+def print_verbose_string(printme):
+    print >> sys.stderr, "VERBOSE: %s" % printme
+
 
 # attempt: use kernel in projection. 
 # For a given CCD pixel, sample a few points and use 
@@ -137,6 +155,8 @@ abr_fftkernels = {}
 
 def save_abr_fftkernels(skernels = abr_fftkernels):
     if os.path.isfile(saved_abr_fftkernels +'.npz'): # npz file already exists
+        if verbose:
+            print_verbose_string("npz kernel file already exists.")
         current = np.load(saved_kernels +'.npz')
         current_dict = {key: current[key] for key in current.keys()}
         current_dict.update(skernels)
@@ -725,3 +745,23 @@ def dict_conv_old(dict_in,kernel,z=0.,proj_dens=10):
         return {key: conv_gauss(dict_in[key],key,z=z,proj_dens=proj_dens,psf_rad=10) for key in dict_in.keys()}
     if kernel == 'airy':
         return {key: conv_airy(dict_in[key],key,z=z,proj_dens=proj_dens,psf_rad=150) for key in dict_in.keys()}
+
+
+####################### BODY OF PROGRAM STARTS HERE ########################
+
+if __name__ == "__main__":
+    
+    arguments   = docopt.docopt(__doc__)
+
+    fitsfile    = arguments['<npzfile>']
+    verbose     = arguments['--verbose']
+    
+    kernel      = arguments['--kernel']
+    pixangle    = arguments['--pixangle']
+    centrecoord = arguments['--centre']
+    axangle     = arguments['--angle']
+    
+    if verbose:
+        print arguments
+        
+    
