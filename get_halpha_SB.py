@@ -36,11 +36,20 @@ def imreduce(img, factor, log=True, method = 'average'):
         inimg = np.log10(inimg)
     return inimg.T
 
-def makemap(data,size,ax,xystarts = [0.,0.]):
+def makemap(data,size,ax,xystarts = [0.,0.],title = ''):
     fontsize=13
     #xystarts = [0.,0.] # lower left origin of the plot
     Vmin = None
     Vmax = None
+    
+    if type(size) == float or type(size) == int:
+        print('The type of size is '+str(type(size)))
+        xsize = size
+        ysize = size
+    else:
+        print('The type of size is '+str(type(size)))
+        xsize = size[0]
+        ysize = size[1]
     
     #fig = plt.figure(figsize = (5.5, 5.)) # large size just as a trick to get higher resolution
     #fig = plt.figure(figsize = (11., 10.))
@@ -53,10 +62,10 @@ def makemap(data,size,ax,xystarts = [0.,0.]):
     colmap = 'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     
-    img = ax.imshow(data.T,extent=(xystarts[0],xystarts[0]+size,xystarts[1],xystarts[1]+size),origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest') # vmin = None, vmax=Vmax,
+    # nearest neighbour interpolation does not do any averaging, it just picks the nearest point and uses that as the value for a specific section in the image
+    img = ax.imshow(data.T,extent=(xystarts[0],xystarts[0]+xsize,xystarts[1],xystarts[1]+ysize),origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest') # vmin = None, vmax=Vmax,
     
-    #title = ''
-    #plt.title(title,fontsize=fontsize)
+    plt.title(title,fontsize=fontsize)
     div = axgrid.make_axes_locatable(ax)
     cax = div.append_axes("right",size="5%",pad=0.1)
     cbar = plt.colorbar(img, cax=cax)
@@ -131,5 +140,3 @@ def indices_region(xbox,ybox):
     yfull = np.array(yfull)
         
     return xfull, yfull
-
-

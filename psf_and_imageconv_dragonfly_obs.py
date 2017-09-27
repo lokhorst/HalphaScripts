@@ -296,6 +296,8 @@ def conv_image_abr(img,boxlength,numpix,z,kernel,fwhm,beta1='auto',beta2='auto',
     
     # set default values for the chosen profile (following Arbraham ipython)
     if kernel == 'Moffat':
+        if verbose:
+            print_verbose_string("Chose Moffat profile.")
         # only normalisation parameter is mf; mr, af are ignored except for auto pf setting     
         if mf == 'auto':
             mf = 1.
@@ -304,6 +306,8 @@ def conv_image_abr(img,boxlength,numpix,z,kernel,fwhm,beta1='auto',beta2='auto',
             beta1 = 4.765 # kolmogorov turbulence
     
     elif kernel == '2Moffat':
+        if verbose:
+            print_verbose_string("Chose 2Moffat profile.")
         if mf == 'auto':
             mf =1.
         if m1f == 'auto':
@@ -315,6 +319,8 @@ def conv_image_abr(img,boxlength,numpix,z,kernel,fwhm,beta1='auto',beta2='auto',
         af = 0. 
     
     elif kernel == 'Aureole':
+        if verbose:
+            print_verbose_string("Chose Aureole profile.")
         if d0 == 'auto':
             d0 = 50.
         if af == 'auto':
@@ -322,6 +328,8 @@ def conv_image_abr(img,boxlength,numpix,z,kernel,fwhm,beta1='auto',beta2='auto',
         mf = 0.
 
     elif kernel == 'Point':
+        if verbose:
+            print_verbose_string("Chose Point profile.")
         if pf == 'auto':
             pf = 1.
 
@@ -329,6 +337,8 @@ def conv_image_abr(img,boxlength,numpix,z,kernel,fwhm,beta1='auto',beta2='auto',
         # default is the optimistic case from the ipython notebook
         # optimistic:  af = 0.02  pessimistic:   af = 0.1   (cirrus)
         # optimistic: fwhm = 3.0  pessimistic:  fwhm = 6.0 in arcsec
+        if verbose:
+            print_verbose_string("Chose 2MoffatAureole profile.")
         
         if af == 'auto' and mf =='auto':
             af = 0.02
@@ -709,17 +719,23 @@ def conv_gauss(image,key,z=0.,proj_dens=10,psf_rad=10):
         (L_x,L_y,L_z) = (12.5,)*3
     if '25' in key:
         (L_x,L_y,L_z) = (25.,)*3
-
+    if '100' in key:
+        (L_x,L_y,L_z) = (100.,)*3
+        
     if '_h' in key:
         L_z = L_z/2.
     if '_q' in key:
         L_z = L_z/4.
+    if '_five' in key:
+        L_z = L_z/20.
         
     # wavelength
     if 'halpha' in key:
          wavelength = wavelengths['halpha']*(1.+z) 
     
     # numpix
+    if '_32_' in key or key[-2:] =='_32':
+        npix = 32000    
     if '_8_' in key or key[-2:] =='_8':
         npix = 8000
     if '_4_' in key or key[-2:] =='_4':
@@ -753,7 +769,7 @@ if __name__ == "__main__":
     
     arguments   = docopt.docopt(__doc__)
 
-    fitsfile    = arguments['<npzfile>']
+    npzfile     = arguments['<npzfile>']
     verbose     = arguments['--verbose']
     
     kernel      = arguments['--kernel']
@@ -764,4 +780,13 @@ if __name__ == "__main__":
     if verbose:
         print arguments
         
+    boxlength   = '100'
+    numpix      = '32'
+    zlength_clue= 'five'
+    wavelenth   = 'halpha'
+    key = '('+boxlength+','+wavelength+','+'_'+numpix+'_'+')'
+    if verbose:
+        print_verbose_string(key)
+        
+    psf_image = conv_gauss(npzfile,key)
     
