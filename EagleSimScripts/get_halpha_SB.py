@@ -43,11 +43,11 @@ def makemap(data,size,ax,xystarts = [0.,0.],title = ''):
     Vmax = None
     
     if type(size) == float or type(size) == int:
-        print('The type of size is '+type(size))
+        print('The type of size is '+str(type(size)))
         xsize = size
         ysize = size
     else:
-        print('The type of size is '+type(size))
+        print('The type of size is '+str(type(size)))
         xsize = size[0]
         ysize = size[1]
     
@@ -140,5 +140,3 @@ def indices_region(xbox,ybox):
     yfull = np.array(yfull)
         
     return xfull, yfull
-
-
