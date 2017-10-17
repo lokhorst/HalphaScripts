@@ -3,6 +3,8 @@ HalphaSB_reduce_resolution.py
 
 purpose:  reduce the resolution of the EAGLE simulations (at several radial distances) to match the pixel resolution 
 of the Dragonfly telescope (binned to 100" pixel sizes).
+
+
 """
 
 import numpy as np

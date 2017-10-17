@@ -60,6 +60,11 @@ factor = 10
 sl = [slice(None,None,None), slice(None,None,None)]
 
 # Simulation snapnum 27 (z = 0.1), xy box size: 100Mpc, z slice width: 5Mpc, zloc: 12.5Mpc
+if machine == 'chinook':
+    homedir = '/Users/lokhorst/Eagle/'
+elif machine == 'coho':
+    homeidr = 'Users/deblokhorst/SlicesfromNastasha/'
+
 files_SF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
                '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
                '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
@@ -72,15 +77,15 @@ files_noSF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb
 
 
 # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
-files_SF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+               homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+               homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+               homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
 
-files_noSF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                 homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                 homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                 homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
 
 #  For a 3nm filter width, that corresponds to a redshift slice of 20 Mpc (big!!)
 data_20=[]   # log( photons / cm^2 / s / sr )
@@ -99,37 +104,38 @@ for fname in files_SF_28+files_noSF_28:
         data_20 = np.log10(10**data_20+10**data)
     del data
 
+if __name__ == "__main__":
 
-# Dragonfly info
-area_lens = np.pi*(14.3/2)**2 * 48.               # cm^2, 48 * 14.3 cm diameter lenses
-pix_size = 2.8                                    # arcsec
-ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
+    # Dragonfly info
+    area_lens = np.pi*(14.3/2)**2 * 48.               # cm^2, 48 * 14.3 cm diameter lenses
+    pix_size = 2.8                                    # arcsec
+    ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
 
-tau_l = 0.85  # transmittance of the Dragonfly lens
-QE_new = 0.70  # quantum efficiency of the CMOS detector
-QE_old = 0.48     # quantum efficiency of the CCDs
-tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
-B = getBackground(656.3,659.3) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
-D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
-R_squared_old = 10.**2 # * u.photon                           # read noise (electrons)
-R_squared_new = 1.**2 # * u.photon                           # read noise (electrons)
+    tau_l = 0.85  # transmittance of the Dragonfly lens
+    QE_new = 0.70  # quantum efficiency of the CMOS detector
+    QE_old = 0.48     # quantum efficiency of the CCDs
+    tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
+    B = getBackground(656.3,659.3) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
+    R_squared_old = 10.**2 # * u.photon                           # read noise (electrons)
+    R_squared_new = 1.**2 # * u.photon                           # read noise (electrons)
 
 
-# calculate the signal in a set exposure time
-exptime = 60.*60.*10**5  # seconds  (10^5 hours)
-totsignal = np.log10(10**data_20 * exptime) # log( photons / cm^2 /sr )
+    # calculate the signal in a set exposure time
+    exptime = 60.*60.*10**5  # seconds  (10^5 hours)
+    totsignal = np.log10(10**data_20 * exptime) # log( photons / cm^2 /sr )
 
-print('Plotting without the noise added, small region (20 Mpc box)...')
-# Plotting parameters
-xystarts = [40.,0.]
-size     = 20.
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (10, 10))
-get_halpha_SB.makemap(totsignal[(xystarts[0]/100.*3200.):((xystarts[0]+size)/100.*3200.),(xystarts[1]/100.*3200.):((xystarts[1]+size)/100.*3200.)],size,ax1,xystarts = xystarts)
-ax1.set_title('sky signal, no noise')
+    print('Plotting without the noise added, small region (20 Mpc box)...')
+    # Plotting parameters
+    xystarts = [40.,0.]
+    size     = 20.
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (10, 10))
+    get_halpha_SB.makemap(totsignal[(xystarts[0]/100.*3200.):((xystarts[0]+size)/100.*3200.),(xystarts[1]/100.*3200.):((xystarts[1]+size)/100.*3200.)],size,ax1,xystarts = xystarts)
+    ax1.set_title('sky signal, no noise')
 
-# calculate the number of detected electrons
-# how much are we going to bin?  100" square, so that is 
-binpix_size = 100. # arcsec
+    # calculate the number of detected electrons
+    # how much are we going to bin?  100" square, so that is 
+    binpix_size = 100. # arcsec
 numpixel = round((binpix_size/pix_size)**2)
 
 detsignal = np.log10(10**totsignal * QE_old * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
