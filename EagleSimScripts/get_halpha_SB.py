@@ -140,3 +140,12 @@ def indices_region(xbox,ybox):
     yfull = np.array(yfull)
         
     return xfull, yfull
+
+def extractdata(xfull,yfull,data):
+    SBdata = np.zeros(xfull.shape)
+    for i in range(yfull.shape[0]):
+        for j in range(yfull.shape[1]):
+                SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
+    return SBdata
+
+    

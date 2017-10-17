@@ -1,3 +1,12 @@
+"""
+HalphaSBregions.py
+
+Three boxes are defined around three filaments in the EAGLE simulation.  This script plots the EAGLE data with filaments circled, extracts SB from the filaments, 
+plots filaments individually.
+
+
+"""
+
 import numpy as np
 import eagle_constants_and_units as c
 import cosmo_utils as csu
@@ -9,224 +18,308 @@ from astropy import units as u
 
 import get_halpha_SB
 
-factor = 10
-sl = [slice(None,None,None), slice(None,None,None)]
+def extractdata(xfull,yfull,data):
+    SBdata = np.zeros(xfull.shape)
+    for i in range(yfull.shape[0]):
+        for j in range(yfull.shape[1]):
+                SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
+    return SBdata
 
-# Simulation snapnum 27 (z = 0.1), xy box size: 100Mpc, z slice width: 5Mpc, zloc: 12.5Mpc
-files_SF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
-
-files_noSF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
-
-
-# Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
-files_SF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
-               '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
-
-files_noSF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
-                 '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
-
-#. let's just copy snapnum 28 data into the snapnum 27 filename so that I don't have to repeat all the following and probably mess stuff up
-
-files_noSF_27 = files_noSF_28
-snapnum = 28
-
-print('Load non-star-forming Halpha emission data...')
-print('data1 ('+files_noSF_27[0]+')...')
-data1 = (np.load(files_noSF_27[0])['arr_0'])[sl]
-#print('data11 ('+files_SF_27[0]+')...')
-#data11 = (np.load(files_SF_27[0])['arr_0'])[sl]
-
-data1 = get_halpha_SB.imreduce(data1, factor, log=True, method = 'average')
-#data11 = get_halpha_SB.imreduce(data11, factor, log=True, method = 'average')
-
-print('5 Mpc slice...')
-data_5 = np.log10(10**data1)#+10**data11)
-
-print('delete data1, data11...')
-del data1
-#del data11
-
-print('data2 ('+files_noSF_27[1]+')...')
-data2 = (np.load(files_noSF_27[1])['arr_0'])[sl]
-#print('data22 ('+files_SF_27[1]+')...')
-#data22 = (np.load(files_SF_27[1])['arr_0'])[sl]
-
-data2 = get_halpha_SB.imreduce(data2, factor, log=True, method = 'average')
-#data22 = get_halpha_SB.imreduce(data22, factor, log=True, method = 'average')
-
-print('10 Mpc slice...')
-data_10 = np.log10(10**data_5+10**data2)#+10**data22)
-
-print('delete data2, data22..')
-del data2
-#del data22
-
-print('data3 ('+files_noSF_27[2]+')...')
-data3 = (np.load(files_noSF_27[2])['arr_0'])[sl]
-data3 = get_halpha_SB.imreduce(data3, factor, log=True, method = 'average')
-
-print('15 Mpc slice...')
-data_15 = np.log10(10**data_10+10**data3)#+10**data11+10**data22+10**data33)
-
-del data3
-#print('data33 ('+files_SF_27[2]+')...')
-#data33 = (np.load(files_SF_27[2])['arr_0'])[sl]
-
-print('data4 ('+files_noSF_27[3]+')...')
-data4 = (np.load(files_noSF_27[3])['arr_0'])[sl]
-data4 = get_halpha_SB.imreduce(data4, factor, log=True, method = 'average')
-
-print('20 Mpc slice...')
-data_20 = np.log10(10**data_15+10**data4)#+10**data11+10**data22+10**data33+10**data44)
-
-del data4
-
-#print('Load star-forming Halpha emission data')
-#print('data44 ('+files_SF_27[3]+')...')
-#data44 = (np.load(files_SF_27[3])['arr_0'])[sl]
-
-#print('Reduce all the data that we just loaded...')
-#data33 = get_halpha_SB.imreduce(data33, factor, log=True, method = 'average')
-#data44 = get_halpha_SB.imreduce(data44, factor, log=True, method = 'average')
-
-#print('Add slices together to create larger slices (also adding together the SFing and non-SFing data)..')
-
-
-
-print('Plot an example region (20 Mpc box)...')
-# Plotting parameters
-xystarts = [40.,0.]
-size     = 20.
-
-fig = plt.figure(figsize = (16.5, 15.))
-ax1 = plt.subplot(111)
-get_halpha_SB.makemap(data_5[(40./100.*3200.):(60./100.*3200.),0:(20./100.*3200.)],size,ax1,xystarts = xystarts)
-
-print('Plot the regions... (slightly shifted for the different snapnums)')
-if snapnum == 27:
-    # Pick out regions along the filaments in the map (snapnum 27)
-    ax1.plot([53,53,56,56,53],[9.2,10,8.5,7.7,9.2],color='r', label='Region 3')
-    ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2]),[14,14,10,10,14],color='r', label='Region 1')
-    ax1.plot(np.array([43,43,46,46,43]),[7.5,8.2,7.2,6.5,7.5],color='r', label = 'Region 2')
+def loaddata1(machine):
     
-    xbox_3 = np.array([53,53,56,56])*3200./100.
-    ybox_3 = np.array([9.2,10,8.5,7.7])*3200./100.
-
-    xbox_2 = np.array([43,43,46,46])*3200./100.
-    ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05)*3200./100.
-
-    xbox_1 = np.array([47.4,46.2,46.9,48.1])*3200./100.
-    ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
+    SFing = False
+    factor = 10
+    sl = [slice(None,None,None), slice(None,None,None)]
     
-if snapnum == 28:
-    # Pick out regions along the filaments in the map (snapnum 28)
+    if machine == 'chinook':
+        homedir = '/Users/lokhorst/Eagle/'
+    elif machine == 'coho':
+        homedir = 'Users/deblokhorst/SlicesfromNastasha/'
 
-    ax1.plot([53,53,56,56,53],np.array([9.2,10,8.5,7.7,9.2])-0.2,color='r', label='Region 3')
-    ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2])+0.5,[14,14,10,10,14],color='r', label='Region 1')
-    ax1.plot(np.array([43,43,46,46,43]),np.array([7.5,8.2,7.2,6.5,7.5])+0.2,color='r', label = 'Region 2')
+    # Simulation snapnum 27 (z = 0.1), xy box size: 100Mpc, z slice width: 5Mpc, zloc: 12.5Mpc
+    files_SF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+    files_noSF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+    # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
+    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+
+    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+
+    #. let's just copy snapnum 28 data into the snapnum 27 filename so that I don't have to repeat all the following and probably mess stuff up
+
+    files_noSF_27 = files_noSF_28
+    snapnum = 28
+
+    print('Load non-star-forming Halpha emission data...')
+    print('data1 ('+files_noSF_27[0]+')...')
+    data1 = (np.load(files_noSF_27[0])['arr_0'])[sl]
+    #print('data11 ('+files_SF_27[0]+')...')
+    #data11 = (np.load(files_SF_27[0])['arr_0'])[sl]
+
+    data1 = get_halpha_SB.imreduce(data1, factor, log=True, method = 'average')
+    #data11 = get_halpha_SB.imreduce(data11, factor, log=True, method = 'average')
+
+    print('5 Mpc slice...')
+    data_5 = np.log10(10**data1)#+10**data11)
+
+    print('delete data1, data11...')
+    del data1
+    #del data11
+
+    print('data2 ('+files_noSF_27[1]+')...')
+    data2 = (np.load(files_noSF_27[1])['arr_0'])[sl]
+    #print('data22 ('+files_SF_27[1]+')...')
+    #data22 = (np.load(files_SF_27[1])['arr_0'])[sl]
+
+    data2 = get_halpha_SB.imreduce(data2, factor, log=True, method = 'average')
+    #data22 = get_halpha_SB.imreduce(data22, factor, log=True, method = 'average')
+
+    print('10 Mpc slice...')
+    data_10 = np.log10(10**data_5+10**data2)#+10**data22)
+
+    print('delete data2, data22..')
+    del data2
+    #del data22
+
+    print('data3 ('+files_noSF_27[2]+')...')
+    data3 = (np.load(files_noSF_27[2])['arr_0'])[sl]
+    data3 = get_halpha_SB.imreduce(data3, factor, log=True, method = 'average')
+
+    print('15 Mpc slice...')
+    data_15 = np.log10(10**data_10+10**data3)#+10**data11+10**data22+10**data33)
+
+    del data3
+    #print('data33 ('+files_SF_27[2]+')...')
+    #data33 = (np.load(files_SF_27[2])['arr_0'])[sl]
+
+    print('data4 ('+files_noSF_27[3]+')...')
+    data4 = (np.load(files_noSF_27[3])['arr_0'])[sl]
+    data4 = get_halpha_SB.imreduce(data4, factor, log=True, method = 'average')
+
+    print('20 Mpc slice...')
+    data_20 = np.log10(10**data_15+10**data4)#+10**data11+10**data22+10**data33+10**data44)
+
+    del data4
+
+    #print('Load star-forming Halpha emission data')
+    #print('data44 ('+files_SF_27[3]+')...')
+    #data44 = (np.load(files_SF_27[3])['arr_0'])[sl]
+
+    #print('Reduce all the data that we just loaded...')
+    #data33 = get_halpha_SB.imreduce(data33, factor, log=True, method = 'average')
+    #data44 = get_halpha_SB.imreduce(data44, factor, log=True, method = 'average')
+
+    #print('Add slices together to create larger slices (also adding together the SFing and non-SFing data)..')
     
-    xbox_3 = np.array([53,53,56,56])*3200./100.
-    ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)*3200./100.
+    return data_5, data_10, data_15, data_20
 
-    xbox_2 = np.array([43,43,46,46])*3200./100.
-    ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05+0.2)*3200./100.
-
-    xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*3200./100.
-    ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
-
-    # Plot the FOV of dragonfly on top
-    # snapnum 28:  
-    scale_50  = 0.206 #kpc/"  ## at z = 0.01 (about 50 Mpc)
-    scale_100 = 0.467 #kpc/"  ## at z = 0.023 (about 100 Mpc)
-    scale_200 = 0.928 #kpc/"  ## at z = 0.047. (about 200 Mpc)
-    x_angFOV = 2.*60.*60. #" 
-    y_angFOV = 3.*60.*60. #"  
-    x_FOV_50  = x_angFOV * scale_50 / 1000. # Mpc
-    y_FOV_50  = y_angFOV * scale_50 / 1000. # Mpc
-    x_FOV_100 = x_angFOV * scale_100 / 1000. # Mpc
-    y_FOV_100 = y_angFOV * scale_100 / 1000. # Mpc
-    x_FOV_200 = x_angFOV * scale_200 / 1000. # Mpc
-    y_FOV_200 = y_angFOV * scale_200 / 1000. # Mpc
     
-    ax1.plot([50.-x_FOV_50/2.,50.+x_FOV_50/2.,50.+x_FOV_50/2.,50.-x_FOV_50/2.,50.-x_FOV_50/2.],
-             [10.+y_FOV_50/2.,10.+y_FOV_50/2.,10.-y_FOV_50/2.,10.-y_FOV_50/2.,10.+y_FOV_50/2.],color='gray')
-    ax1.plot([50.-x_FOV_100/2.,50.+x_FOV_100/2.,50.+x_FOV_100/2.,50.-x_FOV_100/2.,50.-x_FOV_100/2.],
-             [10.+y_FOV_100/2.,10.+y_FOV_100/2.,10.-y_FOV_100/2.,10.-y_FOV_100/2.,10.+y_FOV_100/2.],color='gray')
-    ax1.plot([50.-x_FOV_200/2.,50.+x_FOV_200/2.,50.+x_FOV_200/2.,50.-x_FOV_200/2.,50.-x_FOV_200/2.],
-             [10.+y_FOV_200/2.,10.+y_FOV_200/2.,10.-y_FOV_200/2.,10.-y_FOV_200/2.,10.+y_FOV_200/2.],color='gray')
-    ax1.text(50.-x_FOV_50/2.,10.+y_FOV_50/2.,'50 Mpc away')
-    ax1.text(50.-x_FOV_50/2.,10.+y_FOV_100/2.,'100 Mpc away')
-    ax1.text(50.-x_FOV_50/2.,10.+y_FOV_200/2.,'200 Mpc away')
 
-plt.savefig('HalphaSBregions_15Mpcmap_%s.pdf'%snapnum)
+def loaddata(machine):
+    factor = 10
+    sl = [slice(None,None,None), slice(None,None,None)]
+    
+    if machine == 'chinook':
+        homedir = '/Users/lokhorst/Eagle/'
+    elif machine == 'coho':
+        homedir = 'Users/deblokhorst/SlicesfromNastasha/'
 
-# Pick out the data inside the regions
-xbox = xbox_1
-ybox = ybox_1
-print('Region: '+str(xbox)+' , '+str(ybox))
-xfull, yfull= get_halpha_SB.indices_region(xbox.astype(int),ybox.astype(int))
+    # Simulation snapnum 27 (z = 0.1), xy box size: 100Mpc, z slice width: 5Mpc, zloc: 12.5Mpc
+    files_SF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+    files_noSF_27 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_27_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+    # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
+    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
 
-# Cycle through the x and y arrays, and put the SB data in the region into new arrays
-SBdata_5 = np.zeros(xfull.shape)
-SBdata_10 = np.zeros(xfull.shape)
-SBdata_15 = np.zeros(xfull.shape)
-SBdata_20 = np.zeros(xfull.shape)
-for i in range(yfull.shape[0]):
-    for j in range(yfull.shape[1]):
-        SBdata_5[i,j]  = data_5[xfull[i,j],yfull[i,j]]
-        SBdata_10[i,j] = data_10[xfull[i,j],yfull[i,j]]
-        SBdata_15[i,j] = data_15[xfull[i,j],yfull[i,j]]
-        SBdata_20[i,j] = data_20[xfull[i,j],yfull[i,j]]
+    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
 
-SB_list = ['SBdata_5','SBdata_10','SBdata_15','SBdata_20']
-SBdata_average = np.array([np.log10(np.mean(10**SBdata_5)),np.log10(np.mean(10**SBdata_10)),np.log10(np.mean(10**SBdata_15)),np.log10(np.mean(10**SBdata_20))])
-SBdata_median  = np.array([np.median(SBdata_5),np.median(SBdata_10),np.median(SBdata_15),np.median(SBdata_20)])
-print(SB_list)
-print('Average SB in the selected region: '+str(SBdata_average))
-print('Median SB in the selected region:'+str(SBdata_median))
+    #. let's just copy snapnum 28 data into the snapnum 27 filename so that I don't have to repeat all the following and probably mess stuff up
+
+    files_noSF_27 = files_noSF_28
+    snapnum = 28
+
+    #  For a 3nm filter width, that corresponds to a redshift slice of 20 Mpc 
+    data_20=[]   # log( photons / cm^2 / s / sr )
+    ind=0
+    print('Create data_20 (20Mpc wide slice) from 5Mpc slices at redshift of 0...')
+    for fname in files_SF_28+files_noSF_28:
+        ind=ind+1
+        print('loading data ('+fname+')...')
+        data = (np.load(fname)['arr_0'])[sl]
+        data = get_halpha_SB.imreduce(data, factor, log=True, method = 'average')
+        if data_20 ==[]:
+            print('(1/%s) first addition to data_20...'%(len(files_SF_28+files_noSF_28)))
+            data_20 = data
+        else:
+            print('(%s/%s) adding data to data_20...'%(ind,len(files_SF_28+files_noSF_28)))
+            data_20 = np.log10(10**data_20+10**data)
+            del data
+
+    return data_20
 
 
-# Plot the data that we've pulled out from the array as a check
-clabel = r'log photons/cm$^2$/s/sr'
-Vmin = None
-Vmax= None
-fig = plt.figure(figsize = (7.5, 8.))
-ax = plt.subplot(421)
-fontsize=13
-xystarts = [0.,0.] # lower left origin of the plot
-ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
-ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-ax.tick_params(labelsize=fontsize)
-colmap = 'viridis' #'afmhot'
-ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
-img = ax.imshow(SBdata_5,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-div = axgrid.make_axes_locatable(ax)
-cax = div.append_axes("right",size="5%",pad=0.1)
-cbar = plt.colorbar(img, cax=cax)
-cbar.solids.set_edgecolor("face")
-cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
-cbar.ax.tick_params(labelsize=fontsize)
+if __name__ == "__main__":
 
-# Plot the original data around the region we pulled out to do a cross-check
-#fig = plt.figure(figsize = (16.5, 15.))
-ax1 = plt.subplot(422)
-size = 4.0
-xystarts = [45.2,10.]
-get_halpha_SB.makemap(data_5[(45.2/100.*3200.):(49.2/100.*3200.),(10./100.*3200.):(14./100.*3200.)],size,ax1,xystarts = xystarts)
-ax1.plot(np.append(xbox*100./3200.,xbox[0]*100./3200.),np.append(ybox*100./3200.,ybox[0]*100./3200.),color='r')
-plt.show()
+    verbose = True
+    data_5, data_10, data_15, data_20 = loaddata1('chinook')
 
-###################################################################################
+    if verbose:
+        print('Plot an example region (20 Mpc box)...')
+    
+    # Plotting parameters
+    save = False
+    plotDragonflyFOV = True
+    xystarts = [40.,0.]
+    size     = 20.
+
+    fig = plt.figure(figsize = (16.5, 15.))
+    ax1 = plt.subplot(111)
+    get_halpha_SB.makemap(data_5[(40./100.*3200.):(60./100.*3200.),0:(20./100.*3200.)],size,ax1,xystarts = xystarts)
+
+    if verbose:
+        print('Plot the regions... (slightly shifted for the different snapnums)')
+        
+    if snapnum == 27:
+        # Pick out regions along the filaments in the map (snapnum 27)
+        ax1.plot([53,53,56,56,53],[9.2,10,8.5,7.7,9.2],color='r', label='Region 3')
+        ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2]),[14,14,10,10,14],color='r', label='Region 1')
+        ax1.plot(np.array([43,43,46,46,43]),[7.5,8.2,7.2,6.5,7.5],color='r', label = 'Region 2')
+    
+        xbox_3 = np.array([53,53,56,56])*3200./100.
+        ybox_3 = np.array([9.2,10,8.5,7.7])*3200./100.
+
+        xbox_2 = np.array([43,43,46,46])*3200./100.
+        ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05)*3200./100.
+
+        xbox_1 = np.array([47.4,46.2,46.9,48.1])*3200./100.
+        ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
+    
+    if snapnum == 28:
+        # Pick out regions along the filaments in the map (snapnum 28)
+
+        ax1.plot([53,53,56,56,53],np.array([9.2,10,8.5,7.7,9.2])-0.2,color='r', label='Region 3')
+        ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2])+0.5,[14,14,10,10,14],color='r', label='Region 1')
+        ax1.plot(np.array([43,43,46,46,43]),np.array([7.5,8.2,7.2,6.5,7.5])+0.2,color='r', label = 'Region 2')
+    
+        xbox_3 = np.array([53,53,56,56])*3200./100.
+        ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)*3200./100.
+
+        xbox_2 = np.array([43,43,46,46])*3200./100.
+        ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05+0.2)*3200./100.
+
+        xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*3200./100.
+        ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
+
+        if plotDragonflyFOV:
+            # Plot the FOV of dragonfly on top
+            # snapnum 28:  
+            scale_50  = 0.206 #kpc/"  ## at z = 0.01 (about 50 Mpc)
+            scale_100 = 0.467 #kpc/"  ## at z = 0.023 (about 100 Mpc)
+            scale_200 = 0.928 #kpc/"  ## at z = 0.047. (about 200 Mpc)
+            x_angFOV = 2.*60.*60. #" 
+            y_angFOV = 3.*60.*60. #"  
+            x_FOV_50  = x_angFOV * scale_50 / 1000. # Mpc
+            y_FOV_50  = y_angFOV * scale_50 / 1000. # Mpc
+            x_FOV_100 = x_angFOV * scale_100 / 1000. # Mpc
+            y_FOV_100 = y_angFOV * scale_100 / 1000. # Mpc
+            x_FOV_200 = x_angFOV * scale_200 / 1000. # Mpc
+            y_FOV_200 = y_angFOV * scale_200 / 1000. # Mpc
+    
+            ax1.plot([50.-x_FOV_50/2.,50.+x_FOV_50/2.,50.+x_FOV_50/2.,50.-x_FOV_50/2.,50.-x_FOV_50/2.],
+                     [10.+y_FOV_50/2.,10.+y_FOV_50/2.,10.-y_FOV_50/2.,10.-y_FOV_50/2.,10.+y_FOV_50/2.],color='gray')
+            ax1.plot([50.-x_FOV_100/2.,50.+x_FOV_100/2.,50.+x_FOV_100/2.,50.-x_FOV_100/2.,50.-x_FOV_100/2.],
+                     [10.+y_FOV_100/2.,10.+y_FOV_100/2.,10.-y_FOV_100/2.,10.-y_FOV_100/2.,10.+y_FOV_100/2.],color='gray')
+            ax1.plot([50.-x_FOV_200/2.,50.+x_FOV_200/2.,50.+x_FOV_200/2.,50.-x_FOV_200/2.,50.-x_FOV_200/2.],
+                     [10.+y_FOV_200/2.,10.+y_FOV_200/2.,10.-y_FOV_200/2.,10.-y_FOV_200/2.,10.+y_FOV_200/2.],color='gray')
+            ax1.text(50.-x_FOV_50/2.,10.+y_FOV_50/2.,'50 Mpc away')
+            ax1.text(50.-x_FOV_50/2.,10.+y_FOV_100/2.,'100 Mpc away')
+            ax1.text(50.-x_FOV_50/2.,10.+y_FOV_200/2.,'200 Mpc away')
+
+    if save:
+        plt.savefig('HalphaSBregions_15Mpcmap_%s.pdf'%snapnum)
+    plt.show()
+
+
+    if verbose:
+        print("Picking out data inside regions...")
+            
+    # Pick out the data inside the regions
+    xbox = xbox_1
+    ybox = ybox_1
+    
+    if verbose:
+        print('Region: '+str(xbox)+' , '+str(ybox))
+        
+    xfull, yfull= get_halpha_SB.indices_region(xbox.astype(int),ybox.astype(int))
+    SBdata_5 = extractdata(xfull,yfull,data_5)
+    SBdata_10 = extractdata(xfull,yfull,data_10)
+    SBdata_15 = extractdata(xfull,yfull,data_15)
+    SBdata_20 = extractdata(xfull,yfull,data_20)
+    
+    if verbose:
+        SB_list = ['SBdata_5','SBdata_10','SBdata_15','SBdata_20']
+        SBdata_average = np.array([np.log10(np.mean(10**SBdata_5)),np.log10(np.mean(10**SBdata_10)),np.log10(np.mean(10**SBdata_15)),np.log10(np.mean(10**SBdata_20))])
+        SBdata_median  = np.array([np.median(SBdata_5),np.median(SBdata_10),np.median(SBdata_15),np.median(SBdata_20)])
+        print(SB_list)
+        print('Average SB in the selected region: '+str(SBdata_average))
+        print('Median SB in the selected region:'+str(SBdata_median))
+
+    if verbose:
+        print("Plotting the selected region:")
+    
+    # Plot the data that we've pulled out from the array as a check
+    clabel = r'log photons/cm$^2$/s/sr'
+    Vmin = None
+    Vmax= None
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(421)
+    fontsize=13
+    xystarts = [0.,0.] # lower left origin of the plot
+    ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+    ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+    ax.tick_params(labelsize=fontsize)
+    colmap = 'viridis' #'afmhot'
+    ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
+    img = ax.imshow(SBdata_5,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+    div = axgrid.make_axes_locatable(ax)
+    cax = div.append_axes("right",size="5%",pad=0.1)
+    cbar = plt.colorbar(img, cax=cax)
+    cbar.solids.set_edgecolor("face")
+    cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
+    cbar.ax.tick_params(labelsize=fontsize)
+
+    # Plot the original data around the region we pulled out to do a cross-check
+    #fig = plt.figure(figsize = (16.5, 15.))
+    ax1 = plt.subplot(422)
+    size = 4.0
+    xystarts = [45.2,10.]
+    get_halpha_SB.makemap(data_5[(45.2/100.*3200.):(49.2/100.*3200.),(10./100.*3200.):(14./100.*3200.)],size,ax1,xystarts = xystarts)
+    ax1.plot(np.append(xbox*100./3200.,xbox[0]*100./3200.),np.append(ybox*100./3200.,ybox[0]*100./3200.),color='r')
+    plt.show()
+
+################################### NEEDS EDITING BELOW HERE ################################################
 
 clabel = r'log photons/cm$^2$/s/sr'
 Vmin = None
