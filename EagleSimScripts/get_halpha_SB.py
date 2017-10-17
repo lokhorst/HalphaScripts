@@ -79,7 +79,7 @@ def makemap(data,size,ax,xystarts = [0.,0.],title = ''):
     #plt.show()
 
 def indices_region(xbox,ybox):
-    # Tested in Eagle.ipynb on coho
+    # Tested in RegionSelection_testing.ipynb on coho
     
     # Create 2d arrays for both x and y indices values to pick out the data in the regions
     #(not sure, there's probably a better way to do this...)
