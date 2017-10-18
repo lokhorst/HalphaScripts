@@ -1,6 +1,15 @@
 """
-Script streamlining the process of plotting the filaments with surface brightness contours and binned correctly.
+name: HalphaSBplot_filaments.py
+author: lokhorst
+modified: 17Oct17
 
+short description: Plots (three) filaments from EAGLE simulation (contours overlaid or noise added for mock observation)
+
+description:
+Script streamlining the process of plotting the EAGLE filaments (with surface brightness contours and binned correctly).
+Takes inputs for distance to filament and desired angular resolution of filament, then bins EAGLE data array read in from 
+npz files obtained from Nastasha Wijers at Leiden Observatory.  Plots filament with SB contours overlaid.
+Adds noise to create mock Dragonfly observations.
 """
 
 import numpy as np
@@ -15,30 +24,37 @@ from astropy import units as u
 import get_halpha_SB
 import HalphaSBplot_addnoise
 
-def addnoise(data)
+def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 ### DOESN'T WORK YET ###
-    exptime = 1. # just one second since we are still in detections per second mode
-
     # Dragonfly info
     area_lens = np.pi*(14.3/2)**2 * 48.               # cm^2, 48 * 14.3 cm diameter lenses
     pix_size = 2.8                                    # arcsec
     ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
-
     tau_l = 0.85  # transmittance of the Dragonfly lens
-    QE_new = 0.70  # quantum efficiency of the CMOS detector
-    QE_old = 0.48     # quantum efficiency of the CCDs
     tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
     B = HalphaSBplot_addnoise.getBackground(656.3,659.3) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
     D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
-    R_squared_old = 10.**2 # * u.photon                           # read noise (electrons)
-    R_squared_new = 1.**2 # * u.photon                           # read noise (electrons)
+    if CMOS:
+        print "Using new CMOS cameras..."
+        QE_new = 0.70  # quantum efficiency of the CMOS detector
+        R_squared_new = 1.**2 # * u.photon                           # read noise (electrons)
+    else:
+        print "Using old cameras..."
+        QE_old = 0.48     # quantum efficiency of the CCDs
+        R_squared_old = 10.**2 # * u.photon                           # read noise (electrons)
 
-    binpix_size = 100. # arcsec
+    binpix_size = resolution # arcsec
     numpixel = round((binpix_size/pix_size)**2)
+    
+    'total signal incident (not including atm absorption) in exposure time'
+    totsignal = np.log10(10**data * exptime) # log( photons / cm^2 /sr )
+    'total signal detected (accounting for system efficiency)'
     detsignal = np.log10(10**totsignal * QE_old * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
-
+    'background sky signal detected [B]=ph/s/arcsec^2/m^2'
     B_sky = B * QE_old * tau_l * tau_f * area_lens*(1/100)**2 * pix_size**2
     sigma = np.log10(np.sqrt(10**detsignal + B_sky*exptime*numpixel + D*exptime*numpixel + R_squared_old*numpixel))
+
+    return np.log10(10**detsignal + 10**sigma)
 
 def plotfilament(SBdata,ax,onlyyellow=False):
     # setting up the plot
@@ -158,66 +174,86 @@ def extractdata(xfull,yfull,data):
                 SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
     return SBdata
 
+def plotfilament(data,resolution,distance):
+### DOESN'T WORK YET ###
+    datares, newsize, factor = changeres(distance,resolution,data) # change data to required resolution at selected distance
+    xboxes, yboxes = defineboxes(datares)
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    SBdata = extractdata(xfull,yfull,datares)
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(121)
+    plotfilament(SBdata,ax)
+    return SBdata
 
-#-------------- pick your distance and desired resolution --------------#
-resolution = 100.  ### arcsec
-distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
-boxnum = '1' ### which filament (there are 3)
-factor = 1
-machine='coho'
-#-----------------------------------------------------------------------------------#
+if __name__ == "__main__":
+    #-------------- pick your distance and desired resolution ---------------------------------------------#
+    resolution = 100.  ### arcsec
+    distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
+    boxnum = '1' ### which filament (there are 3)
+    factor = 1
+    machine='coho'
+    #------------------------------------------------------------------------------------------------------#
 
-data_5 = loaddata() # load in data at full resolution
+    data_5 = loaddata() # load in data at full resolution
 
-# pull out the pixel limits for boxes that surround the three filaments
-xboxes, yboxes = defineboxes(data_5)
+    #-------------- plotting filaments at different distances and resolutions, with contours --------------#
+    # pull out the pixel limits for boxes that surround the three filaments
+    xboxes, yboxes = defineboxes(data_5)
+    # takes in pixel limits that bound a box and create arrays of x and y pixel values to pick out SB 
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    # use pixel arrays to extract SB data in a box from the data array
+    SBdata_5 = extractdata(xfull,yfull,data_5)
+    SBdata_average = np.log10(np.mean(10**SBdata_5))
+    SBdata_median  = np.median(SBdata_5)
+    # plot the filament with contours
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(121)
+    plotfilament(SBdata_5,ax)
 
-# takes in pixel limits that bound a box and create arrays of x and y pixel values to pick out SB 
-xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    # repeat with different resolution
+    data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+    xboxes, yboxes = defineboxes(data_50Mpc_100arcsec)
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    SBdata_50Mpc_100arcsec = extractdata(xfull,yfull,data_50Mpc_100arcsec)
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(121)
+    plotfilament(SBdata_50Mpc_100arcsec,ax)
 
-# use pixel arrays to extract SB data in a box from the data array
-SBdata_5 = extractdata(xfull,yfull,data_5)
+    # repeat with different resolution
+    resolution = 500. ### arcsec
+    data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+    xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(121)
+    print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
+    plotfilament(SBdata_50Mpc_500arcsec,ax)
+    plt.title('SBdata_50Mpc_500arcsec %s Mpc per pixel'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
+    #----------------------------------------------------------------------------------------------------------#
 
-SBdata_average = np.log10(np.mean(10**SBdata_5))
-SBdata_median  = np.median(SBdata_5)
+    #----------------------------------------- Add noise to a filament and then plot --------------------------#
+    # try adding noise to the SBdata in a filament and then plotting
+    resolution = 500. ### arcsec
+    data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+    xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
+    addnoise(SBdata_50Mpc_500arcsec,resolution,exptime=10**4*3600.,CMOS=True)
+    fig = plt.figure(figsize = (7.5, 8.))
+    ax = plt.subplot(121)
+    print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
+    plotfilament(SBdata_50Mpc_500arcsec,ax)
+    plt.show()
+    
+    #----------------------------------------- Plot original data (check filament plot) ------------------------#
+    # Plot the original data around the region we pulled out to do a cross-check
+    #fig = plt.figure(figsize = (16.5, 15.))
+    ax1 = plt.subplot(122)
 
-# plot the filament with contours
-fig = plt.figure(figsize = (7.5, 8.))
-ax = plt.subplot(121)
-plotfilament(SBdata_5,ax)
+    factor = 1. ## if you are plotting raw data (un-reduced in resolution)
 
-# repeat with different resolution
-data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
-xboxes, yboxes = defineboxes(data_50Mpc_100arcsec)
-xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-
-SBdata_50Mpc_100arcsec = extractdata(xfull,yfull,data_50Mpc_100arcsec)
-fig = plt.figure(figsize = (7.5, 8.))
-ax = plt.subplot(121)
-plotfilament(SBdata_50Mpc_100arcsec,ax)
-
-# repeat with different resolution
-resolution = 500. ### arcsec
-data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
-xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
-xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-
-SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
-fig = plt.figure(figsize = (7.5, 8.))
-ax = plt.subplot(121)
-print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-plotfilament(SBdata_50Mpc_500arcsec,ax)
-plt.title('SBdata_50Mpc_500arcsec %s Mpc per pixel'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-
-plt.show()
-
-
-# Plot the original data around the region we pulled out to do a cross-check
-#fig = plt.figure(figsize = (16.5, 15.))
-ax1 = plt.subplot(122)
-factor = 1. ## only comment this out if you are using the  reduced resolution
-
-get_halpha_SB.makemap(data_5[(xystarts[0]/100.*3200./factor):((xystarts[0]+size)/100.*3200./factor),(xystarts[1]/100.*3200./factor):((xystarts[1]+size)/100.*3200./factor)],size,ax1,xystarts = xystarts)
-ax1.plot(np.append(xbox*100./3200.*factor,xbox[0]*100./3200.*factor),np.append(ybox*100./3200.*factor,ybox[0]*100./3200.*factor),color='r')
-plt.show()
+    get_halpha_SB.makemap(data_5[(xystarts[0]/100.*3200./factor):((xystarts[0]+size)/100.*3200./factor),(xystarts[1]/100.*3200./factor):((xystarts[1]+size)/100.*3200./factor)],size,ax1,xystarts = xystarts)
+    ax1.plot(np.append(xbox*100./3200.*factor,xbox[0]*100./3200.*factor),np.append(ybox*100./3200.*factor,ybox[0]*100./3200.*factor),color='r')
+    plt.show()
 
