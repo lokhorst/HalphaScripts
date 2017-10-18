@@ -80,17 +80,21 @@ def plotfilament(SBdata,ax,onlyyellow=False):
     
 def loaddata():
     sl = [slice(None,None,None), slice(None,None,None)]
+    if machine=='chinook':
+        homedir='/Users/lokhorst/Eagle/'
+    elif machine=='coho':
+        homedir='/Users/deblokhorst/eagle/SlicesFromNastasha/'
 
     # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
-    files_SF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
-                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
-                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
-                   '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
 
-    files_noSF_28 = ['/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
-                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
-                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
-                     '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
                  
     # Load a 5Mpc slice of data
     print('data1 ('+files_noSF_28[0]+')...')
@@ -156,11 +160,11 @@ resolution = 100.  ### arcsec
 distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
 boxnum = '1' ### which filament (there are 3)
 factor = 1
+machine='coho'
 #-----------------------------------------------------------------------------------#
 
 data_5 = loaddata() # load in data at full resolution
 
-data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
 
 # pull out the pixel limits for boxes that surround the three filaments
 xboxes, yboxes = defineboxes(data_5)
@@ -178,6 +182,8 @@ SBdata_median  = np.median(SBdata_5)
 fig = plt.figure(figsize = (7.5, 8.))
 ax = plt.subplot(121)
 plotfilament(SBdata_5,ax)
+
+data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
 
 
 
