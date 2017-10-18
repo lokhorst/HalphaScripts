@@ -65,6 +65,8 @@ def plotfilament(SBdata,ax,onlyyellow=False):
     img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
     levels = np.array([-2,-1,0,1,2,3])
     colours = ('red','orange','yellow','cyan','purple','pink')
+    levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
+    colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
     
     # plot contours
     cmap = cm.PRGn
@@ -114,19 +116,21 @@ def loaddata():
 def changeres(distance,resolution,data):
     pixscale =  {'50Mpc': 0.237/1000.*(1.+0.0115), '100Mpc': 0.477/1000.*(1.+0.0235),'200Mpc': 0.928/1000.*(1.+0.047) , '500Mpc': 2.178/1000.*(1.+0.12)} ### Mpc / arcsec (comoving)
     simpixsize = 100./32000. ### Mpc / pixel is resolution of raw data 
-    factor = pixscale[distance]*resolution/simpixsize
+    factor = round(pixscale[distance]*resolution/simpixsize)
     size = 32000.
     # LATER determine the current resolution of the data. FOR NOW assume current resolution is 100 Mpc/ 32000 pixels ~ 3 kpc/pixel
 
     # If the factors are not integer multiples of 32000., I'll trim the data first and then imreduce it
-    if 32000.%(round(factor)) != 0.:
-        times_factor_fits_in = round(32000./factor)
+    if 32000.%((factor)) != 0.:
+        times_factor_fits_in = int(32000./factor)
         newsize = times_factor_fits_in * factor
         print("the new size of the data array is %s."%newsize)
-        data = data[0:round(newsize),0:round(newsize)]
-        size = newsize
+        datanew = data[0:int(newsize),0:int(newsize)]
+    else:
+        datanew = data
+        newsize = size
 
-    return get_halpha_SB.imreduce(data, round(factor), log=True, method = 'average'), size, round(factor)
+    return get_halpha_SB.imreduce(datanew, round(factor), log=True, method = 'average'), newsize, factor
 
 def defineboxes(data,size=100.):
     # size in Mpc = total box size of data
@@ -165,7 +169,6 @@ machine='coho'
 
 data_5 = loaddata() # load in data at full resolution
 
-
 # pull out the pixel limits for boxes that surround the three filaments
 xboxes, yboxes = defineboxes(data_5)
 
@@ -183,9 +186,30 @@ fig = plt.figure(figsize = (7.5, 8.))
 ax = plt.subplot(121)
 plotfilament(SBdata_5,ax)
 
+# repeat with different resolution
 data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+xboxes, yboxes = defineboxes(data_50Mpc_100arcsec)
+xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
 
+SBdata_50Mpc_100arcsec = extractdata(xfull,yfull,data_50Mpc_100arcsec)
+fig = plt.figure(figsize = (7.5, 8.))
+ax = plt.subplot(121)
+plotfilament(SBdata_50Mpc_100arcsec,ax)
 
+# repeat with different resolution
+resolution = 500. ### arcsec
+data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
+xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+
+SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
+fig = plt.figure(figsize = (7.5, 8.))
+ax = plt.subplot(121)
+print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
+plotfilament(SBdata_50Mpc_500arcsec,ax)
+plt.title('SBdata_50Mpc_500arcsec %s Mpc per pixel'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
+
+plt.show()
 
 
 # Plot the original data around the region we pulled out to do a cross-check
