@@ -50,16 +50,15 @@ def getBackground(start,end,machine,plot=False):
     # if spacings are not even, need to add element by element
     total=0
     for index in np.arange(start_ind,end_ind):
-        print index,index+1
-        print total
+      #  print index,index+1
+      #  print total
         total = total+(flux[index]*(wavelength[index+1]-wavelength[index]))
         
     # if spacings are even, can just take the average of the flux array and times it by the total bandwidth
     np.mean(flux[start_ind:end_ind])*(wavelength[end_ind]-wavelength[start_ind])
     
-    
-    print('start index and end index: %s and %s'%(start_ind,end_ind))
-    print(wavelength[start_ind:end_ind]-wavelength[start_ind+1:end_ind+1])
+   # print('start index and end index: %s and %s'%(start_ind,end_ind))
+   # print(wavelength[start_ind:end_ind]-wavelength[start_ind+1:end_ind+1])
     if plot==True:
         plt.plot(wavelength[start_ind-100:end_ind+100],flux[start_ind-100:end_ind+100])
         top = max(flux[start_ind-100:end_ind+100])
@@ -76,7 +75,8 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
     tau_l = 0.85  # transmittance of the Dragonfly lens
     tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
-    B = getBackground(656.3,659.3,'coho') # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    B = getBackground(656.3,657.3,machine) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    print "the background in the bandwidth is: %s"%B
     D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
     if CMOS:
         print "Using new CMOS cameras..."
@@ -89,48 +89,80 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 
     binpix_size = resolution # arcsec
     numpixel = round((binpix_size/pix_size)**2)
+    print "the number of pixels is %s"%numpixel
     
     'total signal incident (not including atm absorption) in exposure time'
     totsignal = np.log10(10**data * exptime) # log( photons / cm^2 /sr )
     'total signal detected (accounting for system efficiency)'
     detsignal = np.log10(10**totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
-    'background sky signal detected [B]=ph/s/arcsec^2/m^2'
-    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100)**2 * pix_size**2
-    sigma = np.log10(np.sqrt(10**detsignal + B_sky*exptime*numpixel + D*exptime*numpixel + R_squared*numpixel))
+    
+    ### to do:  add noise to the signal as done below for the sky background.
+    
+    'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
+    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
+    print "the background signal, B_sky, is: %s"%B_sky
+    
+    # add noise to the background sky signal by replacing each value with a random value taken from a gaussian distribution with a mean of its value and st dev of sqrt of its value
+    # set up array to contain sky background noise, use mean from the number of pixels bin over to make the map
+    B_sky_array = np.zeros((data.shape[0],data.shape[1]))
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            B_sky_array[x][y]=np.mean(np.random.normal(B_sky,np.sqrt(B_sky),int(numpixel)))    
+    
+    # add noise to dark current and read noise?
+    
+    sigma = np.log10(np.sqrt(10**detsignal + B_sky_array*exptime*numpixel + D*exptime*numpixel + R_squared*numpixel))
 
-    return np.log10(10**detsignal + 10**sigma)
+    return B_sky_array, np.log10(10**detsignal + np.sqrt(B_sky_array*exptime*numpixel))
 
-def plotfilament(SBdata,ax,onlyyellow=False,contours=True):
+def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mockobs=False,labelaxes=False):
     # setting up the plot
-    clabel = r'log photons/cm$^2$/s/sr'
+    if mockobs:
+        clabel = r'log signal (photons)'
+    else:
+        clabel = r'log photons/cm$^2$/s/sr'
     Vmin = None
     Vmax= None
     #fig = plt.figure(figsize = (7.5, 8.))
     #ax = plt.subplot(121)
     fontsize=13
-    #ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
-    #ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-    ax.tick_params(labelsize=fontsize)
-    colmap = 'viridis' #'afmhot'
+
+    if labelaxes:
+        ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+        ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+        xlabels = [0,0.6,1.2,1.8,2.4,3.0]
+        ax.set_xticks([0,5,10,15,20,25], minor=False)
+        ax.set_xticklabels(xlabels, minor=False)
+        ylabels = [ 0.,0.25,0.5]
+        ax.set_yticks([0,2.5,5], minor=False)
+        ax.set_yticklabels(ylabels, minor=False)
+    
+        ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
+        ax.xaxis.set_label_position('top') 
+        ax.xaxis.tick_top()
+        
+    
+    #colmap = 'viridis'#'gist_gray'#'plasma'#'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
 
-    if contours:
-        ## If you only want to plot the SB greater than 1 photon/s/cm^2/arcsec^2 then do the following
-        if onlyyellow:
-            SBonlyyellow = SBdata
-            SBonlyyellow[SBdata<0.] = -3.
-            img = ax.imshow(SBonlyyellow.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-            levels = [0,1,2]
-            colours = ['yellow','cyan','purple']
-        else:
-            img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-            levels = np.array([-2,-1,0,1,2,3])
-            colours = ('red','orange','yellow','cyan','purple','pink')
-            levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
-            colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
     
-        # plot contours
-        cmap = cm.PRGn
+    ## If you only want to plot the SB greater than 1 photon/s/cm^2/arcsec^2 then do the following
+    if onlyyellow:
+        SBonlyyellow = SBdata
+        SBonlyyellow[SBdata<0.] = -3.
+        img = ax.imshow(SBonlyyellow.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+        levels = [0,1,2]
+        colours = ['yellow','cyan','purple']
+    else:
+        img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+        levels = np.array([-2,-1,0,1,2,3])
+        colours = ('red','orange','yellow','cyan','purple','pink')
+        #levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
+        #colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
+    
+    # plot contours
+    cmap = cm.PRGn
+    if contours:
         ax.contour(SBdata.T,levels,colors=colours)#,cmap=cm.get_cmap(cmap, len(levels) - 1),)
 
     div = axgrid.make_axes_locatable(ax)
@@ -140,7 +172,8 @@ def plotfilament(SBdata,ax,onlyyellow=False,contours=True):
     cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
     #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
-    
+
+
 def loaddata():
     sl = [slice(None,None,None), slice(None,None,None)]
     if machine=='chinook':
@@ -185,7 +218,7 @@ def changeres(distance,resolution,data):
     if 32000.%((factor)) != 0.:
         times_factor_fits_in = int(32000./factor)
         newsize = times_factor_fits_in * factor
-        print("the new size of the data array is %s."%newsize)
+        print("Before reducing resolution, the original data was trimmed to size %s."%newsize)
         datanew = data[0:int(newsize),0:int(newsize)]
     else:
         datanew = data
@@ -219,15 +252,12 @@ def extractdata(xfull,yfull,data):
                 SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
     return SBdata
 
-def plotfilament(data,resolution,distance):
+def getSBatfilament(data,resolution,distance):
 ### DOESN'T WORK YET ###
     datares, newsize, factor = changeres(distance,resolution,data) # change data to required resolution at selected distance
     xboxes, yboxes = defineboxes(datares)
     xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
     SBdata = extractdata(xfull,yfull,datares)
-    fig = plt.figure(figsize = (7.5, 8.))
-    ax = plt.subplot(121)
-    plotfilament(SBdata,ax)
     return SBdata
 
 if __name__ == "__main__":
@@ -236,7 +266,7 @@ if __name__ == "__main__":
     distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
     boxnum = '1' ### which filament (there are 3)
     factor = 1
-    machine='coho'
+    machine='chinook'
     #------------------------------------------------------------------------------------------------------#
 
     data_5 = loaddata() # load in data at full resolution
@@ -244,7 +274,7 @@ if __name__ == "__main__":
     #-------------- plotting filaments at different distances and resolutions, with contours --------------#
     # pull out the pixel limits for boxes that surround the three filaments
     xboxes, yboxes = defineboxes(data_5)
-    # takes in pixel limits that bound a box and create arrays of x and y pixel values to pick out SB 
+    # takes in pixel limits that bound a specific box and create arrays of x and y pixel values to pick out SB 
     xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
     # use pixel arrays to extract SB data in a box from the data array
     SBdata_5 = extractdata(xfull,yfull,data_5)
@@ -278,9 +308,10 @@ if __name__ == "__main__":
     #----------------------------------------------------------------------------------------------------------#
 
     #----------------------------------------- Add noise to a filament and then plot --------------------------#
-    # try adding noise to the SBdata in a filament and then plotting
+    # first try adding noise to the SBdata in a filament and then plotting
     resolution = 500. ### arcsec
     data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
+    
     xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
     xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
     SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
@@ -288,8 +319,104 @@ if __name__ == "__main__":
     fig = plt.figure(figsize = (7.5, 8.))
     ax = plt.subplot(121)
     print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-    plotfilament(SBdata_50Mpc_500arcsec,ax,contours=False)
+    plotfilament(SBdata_50Mpc_500arcsec_withnoise,ax,contours=False,mockobs=True)
+    ax2 = plt.subplot(122)
+    plotfilament(SBdata_50Mpc_500arcsec,ax2,contours=False)
     plt.show()
+    
+    # Same distance, same exposure time, three different resolutions
+    
+    def plot_diffres():
+        fig = plt.figure(figsize = (7.5, 8.))
+        SBdata_100 = getSBatfilament(data_5,100,distance)
+        SBdata_100_withnoise = addnoise(SBdata_100,100,exptime=10**4*3600.,CMOS=True)
+        ax1 = plt.subplot(322)
+        plotfilament(SBdata_100_withnoise,ax1,contours=False,mockobs=True)
+        ax2 = plt.subplot(321)
+        plotfilament(SBdata_100,ax2,contours=False)
+    
+        SBdata_500 = getSBatfilament(data_5,500,distance)
+        SBdata_500_withnoise = addnoise(SBdata_500,500,exptime=10**4*3600.,CMOS=True)
+        ax3 = plt.subplot(324)
+        plotfilament(SBdata_500_withnoise,ax3,contours=False,mockobs=True)
+        ax4 = plt.subplot(323)
+        plotfilament(SBdata_500,ax4,contours=False)
+    
+        SBdata_1000 = getSBatfilament(data_5,1000,distance)
+        SBdata_1000_withnoise = addnoise(SBdata_1000,1000,exptime=10**4*3600.,CMOS=True)
+        ax5 = plt.subplot(326)
+        plotfilament(SBdata_1000_withnoise,ax5,contours=False,mockobs=True)
+        ax6 = plt.subplot(325)
+        plotfilament(SBdata_1000,ax6,contours=False)
+    
+        plt.show()
+    
+    # Same distance, same resolution, different exposure times
+    
+    def plot_diffexptime(resolution,distance):
+        SBdata = getSBatfilament(data_5,resolution,distance)
+        noise,SBdata_exp0 = addnoise(SBdata,resolution,exptime=10**2*3600.,CMOS=True)    
+        noise,SBdata_exp1 = addnoise(SBdata,resolution,exptime=10**3*3600.,CMOS=True)
+        noise,SBdata_exp2 = addnoise(SBdata,resolution,exptime=10**4*3600.,CMOS=True)
+        noise,SBdata_exp3 = addnoise(SBdata,resolution,exptime=10**5*3600.,CMOS=True)
+        
+        fig = plt.figure(figsize = (7.5, 8.))
+        ax1 = plt.subplot(221)
+        plotfilament(SBdata,ax1)
+        ax0 = plt.subplot(223)
+        plotfilament(SBdata_exp0,ax0,contours=False,mockobs=True)
+        #ax2 = plt.subplot(223)
+        #plotfilament(SBdata_exp1,ax2,contours=False,mockobs=True)    
+        ax3 = plt.subplot(224)
+        plotfilament(SBdata_exp2,ax3,contours=False,mockobs=True)
+        #ax4 = plt.subplot(224)
+        #plotfilament(SBdata_exp3,ax4,contours=False,mockobs=True)
+        plt.show()
+        
+        # 100 hours (adjust so pretty!)
+        SBdata_100hr_subtract = SBdata_exp0 - (int(np.min(SBdata_exp0)*100)/100.)
+        fig = plt.figure(figsize = (9.5, 10.))
+        ax1 = plt.subplot(111)
+        
+        
+    plot_diffexptime(500,distance)
+    plot_diffexptime(100,distance)
+    
+    print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%round(31996.0/32000.*/SBdata.shape[0],2))
+    
+    #SBdata_1000hr_subtract=np.log10(10**SBdata_exp1-10**4.83)
+    #SBdata_subtract = np.log10(10**SBdata_exp2 - 10**5.33)
+    SBdata_1000hr_subtract=SBdata_exp1-5.89
+    SBdata_subtract = SBdata_exp2 - 6.39
+    
+    
+    fig = plt.figure(figsize = (9.5, 10.))
+    ax1 = plt.subplot(211)
+    ax2 = plt.subplot(212)
+    plotfilament((SBdata_1000hr_subtract)**0.1,ax1,colmap='gist_gray',contours=False,mockobs=True)
+    plotfilament((SBdata_subtract)**0.1,ax2,colmap='gist_gray',contours=False,mockobs=True) #10000 hr
+    plt.show()
+    
+    
+    fig = plt.figure(figsize = (9.5, 10.))
+    ax1 = plt.subplot(211)
+    ax2 = plt.subplot(212)
+    plotfilament((SBdata_1000hr_subtract)**0.1,ax1,colmap='gist_gray',contours=False,mockobs=True)      # with flat noise added! (uniform)
+    plotfilament((SBdata_1000hr_noisy_subtract)**0.1,ax2,colmap='gist_gray',contours=False,mockobs=True)               # with noisy noise added! (gaussian dist)
+    plt.show()
+    
+    fig = plt.figure(figsize = (9.5, 10.))
+    ax1 = plt.subplot(211)
+    ax2 = plt.subplot(212)
+    plotfilament(10**(SBdata_1000hr_subtract),ax1,colmap='gist_gray',contours=False,mockobs=True)
+    plotfilament(10**(SBdata_subtract),ax2,colmap='gist_gray',contours=False,mockobs=True) #10000 hr
+    plt.show()
+    
+    fig = plt.figure(figsize = (9.5, 10.))
+    ax1 = plt.subplot(111)
+    plotfilament((SBdata_1000hr_subtract)**0.2,ax1,colmap='gist_gray',contours=False,mockobs=True)
+    plt.show()
+
     
     #----------------------------------------- Plot original data (check filament plot) ------------------------#
     # Plot the original data around the region we pulled out to do a cross-check

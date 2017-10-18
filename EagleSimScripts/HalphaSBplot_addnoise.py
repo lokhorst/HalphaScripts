@@ -154,6 +154,12 @@ if __name__ == "__main__":
 
     # calculate the detected noise and system noise
     B_sky = B * QE_old * tau_l * tau_f * area_lens*(1/100)**2 * pix_size**2
+    
+    B_sky_array = np.zeros((data_20.shape[0],data_20.shape[1]))
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            B_sky_array[x][y]=np.random.normal(B_sky,np.sqrt(B_sky))
+    
     sigma_nophotonnoise = np.sqrt( B_sky*exptime*numpixel + D*exptime*numpixel + R_squared_old*numpixel)
     print('For reference, the total noise per pixel MINUS shot noise (background sky, dark current, and read noise) is %s.'%sigma_nophotonnoise)
     sigma = np.log10(np.sqrt(10**detsignal + B_sky*exptime*numpixel + D*exptime*numpixel + R_squared_old*numpixel))
