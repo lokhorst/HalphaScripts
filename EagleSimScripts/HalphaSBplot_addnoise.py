@@ -16,11 +16,17 @@ from astropy import units as u
 
 import get_halpha_SB
 
-def getBackground(start,end,plot=True):
+def getBackground(start,end,machine,plot=True):
     # Returns the total background flux in the wavlength interval supplied i.e. returns (flux)*(wavlength interval) 
     wavelength = []
     flux = []
-    with open('/Users/lokhorst/Documents/Eagle/Gemini_skybackground.dat','r') as f:  #wavelength in nm, flux in phot/s/nm/arcsec^2/m^2
+    
+    if machine=='chinook':
+        geminiloc='/Users/lokhorst/Documents/Eagle/Gemini_skybackground.dat'
+    elif machine=='coho':
+        geminiloc='/Users/deblokhorst/Documents/Dragonfly/HalphaScripts/Gemini_skybackground.dat'
+    
+    with open(geminiloc,'r') as f:  #wavelength in nm, flux in phot/s/nm/arcsec^2/m^2
         for line in f:
             if line[0]!='#' and len(line)>5:
                 tmp = line.split()

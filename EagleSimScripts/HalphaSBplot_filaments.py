@@ -24,6 +24,50 @@ from astropy import units as u
 import get_halpha_SB
 import HalphaSBplot_addnoise
 
+def getBackground(start,end,machine,plot=False):
+    # Returns the total background flux in the wavlength interval supplied i.e. returns (flux)*(wavlength interval) 
+    wavelength = []
+    flux = []
+    
+    if machine=='chinook':
+        geminiloc='/Users/lokhorst/Documents/Eagle/Gemini_skybackground.dat'
+    elif machine=='coho':
+        geminiloc='/Users/deblokhorst/Documents/Dragonfly/HalphaScripts/Gemini_skybackground.dat'
+    
+    with open(geminiloc,'r') as f:  #wavelength in nm, flux in phot/s/nm/arcsec^2/m^2
+        for line in f:
+            if line[0]!='#' and len(line)>5:
+                tmp = line.split()
+                wavelength.append(tmp[0])
+                flux.append(tmp[1])
+                
+    wavelength = np.array(wavelength,'d')
+    flux = np.array(flux,'d')
+    
+    start_ind = (np.abs(wavelength-start)).argmin()
+    end_ind   = (np.abs(wavelength-end)).argmin()
+    
+    # if spacings are not even, need to add element by element
+    total=0
+    for index in np.arange(start_ind,end_ind):
+        print index,index+1
+        print total
+        total = total+(flux[index]*(wavelength[index+1]-wavelength[index]))
+        
+    # if spacings are even, can just take the average of the flux array and times it by the total bandwidth
+    np.mean(flux[start_ind:end_ind])*(wavelength[end_ind]-wavelength[start_ind])
+    
+    
+    print('start index and end index: %s and %s'%(start_ind,end_ind))
+    print(wavelength[start_ind:end_ind]-wavelength[start_ind+1:end_ind+1])
+    if plot==True:
+        plt.plot(wavelength[start_ind-100:end_ind+100],flux[start_ind-100:end_ind+100])
+        top = max(flux[start_ind-100:end_ind+100])
+        plt.plot([start,start,end,end,start],[0,top,top,0,0])
+        plt.show()
+        
+    return total
+
 def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 ### DOESN'T WORK YET ###
     # Dragonfly info
@@ -32,16 +76,16 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
     tau_l = 0.85  # transmittance of the Dragonfly lens
     tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
-    B = HalphaSBplot_addnoise.getBackground(656.3,659.3) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    B = getBackground(656.3,659.3,'coho') # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
     D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
     if CMOS:
         print "Using new CMOS cameras..."
-        QE_new = 0.70  # quantum efficiency of the CMOS detector
-        R_squared_new = 1.**2 # * u.photon                           # read noise (electrons)
+        QE = 0.70  # quantum efficiency of the CMOS detector
+        R_squared = 1.**2 # * u.photon                           # read noise (electrons)
     else:
         print "Using old cameras..."
-        QE_old = 0.48     # quantum efficiency of the CCDs
-        R_squared_old = 10.**2 # * u.photon                           # read noise (electrons)
+        QE = 0.48     # quantum efficiency of the CCDs
+        R_squared = 10.**2 # * u.photon                           # read noise (electrons)
 
     binpix_size = resolution # arcsec
     numpixel = round((binpix_size/pix_size)**2)
@@ -49,10 +93,10 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     'total signal incident (not including atm absorption) in exposure time'
     totsignal = np.log10(10**data * exptime) # log( photons / cm^2 /sr )
     'total signal detected (accounting for system efficiency)'
-    detsignal = np.log10(10**totsignal * QE_old * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
+    detsignal = np.log10(10**totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
     'background sky signal detected [B]=ph/s/arcsec^2/m^2'
-    B_sky = B * QE_old * tau_l * tau_f * area_lens*(1/100)**2 * pix_size**2
-    sigma = np.log10(np.sqrt(10**detsignal + B_sky*exptime*numpixel + D*exptime*numpixel + R_squared_old*numpixel))
+    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100)**2 * pix_size**2
+    sigma = np.log10(np.sqrt(10**detsignal + B_sky*exptime*numpixel + D*exptime*numpixel + R_squared*numpixel))
 
     return np.log10(10**detsignal + 10**sigma)
 
@@ -239,7 +283,7 @@ if __name__ == "__main__":
     xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
     xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
     SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
-    addnoise(SBdata_50Mpc_500arcsec,resolution,exptime=10**4*3600.,CMOS=True)
+    SBdata_50Mpc_500arcsec_withnoise = addnoise(SBdata_50Mpc_500arcsec,resolution,exptime=10**4*3600.,CMOS=True)
     fig = plt.figure(figsize = (7.5, 8.))
     ax = plt.subplot(121)
     print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
