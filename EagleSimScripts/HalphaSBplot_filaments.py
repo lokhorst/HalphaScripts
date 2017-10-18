@@ -100,7 +100,7 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 
     return np.log10(10**detsignal + 10**sigma)
 
-def plotfilament(SBdata,ax,onlyyellow=False):
+def plotfilament(SBdata,ax,onlyyellow=False,contours=True):
     # setting up the plot
     clabel = r'log photons/cm$^2$/s/sr'
     Vmin = None
@@ -114,23 +114,24 @@ def plotfilament(SBdata,ax,onlyyellow=False):
     colmap = 'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
 
-    ## If you only want to plot the SB greater than 1 photon/s/cm^2/arcsec^2 then do the following
-    #if onlyyellow:
-    #    SBonlyyellow = SBdata
-    #    SBonlyyellow[SBdata<0.] = -3.
-    #    img = ax.imshow(SBonlyyellow.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-    #    levels = [0,1,2]
-    #    colours = ['yellow','cyan','purple']
-    #else:
-    img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-    levels = np.array([-2,-1,0,1,2,3])
-    colours = ('red','orange','yellow','cyan','purple','pink')
-    levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
-    colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
+    if contours:
+        ## If you only want to plot the SB greater than 1 photon/s/cm^2/arcsec^2 then do the following
+        if onlyyellow:
+            SBonlyyellow = SBdata
+            SBonlyyellow[SBdata<0.] = -3.
+            img = ax.imshow(SBonlyyellow.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+            levels = [0,1,2]
+            colours = ['yellow','cyan','purple']
+        else:
+            img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+            levels = np.array([-2,-1,0,1,2,3])
+            colours = ('red','orange','yellow','cyan','purple','pink')
+            levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
+            colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
     
-    # plot contours
-    cmap = cm.PRGn
-    ax.contour(SBdata.T,levels,colors=colours)#,cmap=cm.get_cmap(cmap, len(levels) - 1),)
+        # plot contours
+        cmap = cm.PRGn
+        ax.contour(SBdata.T,levels,colors=colours)#,cmap=cm.get_cmap(cmap, len(levels) - 1),)
 
     div = axgrid.make_axes_locatable(ax)
     cax = div.append_axes("bottom",size="15%",pad=0.1)
@@ -287,7 +288,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize = (7.5, 8.))
     ax = plt.subplot(121)
     print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-    plotfilament(SBdata_50Mpc_500arcsec,ax)
+    plotfilament(SBdata_50Mpc_500arcsec,ax,contours=False)
     plt.show()
     
     #----------------------------------------- Plot original data (check filament plot) ------------------------#
