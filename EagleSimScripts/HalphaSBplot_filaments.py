@@ -1,11 +1,20 @@
-"""
-name: HalphaSBplot_filaments.py
-author: lokhorst
-modified: 17Oct17
+#!/usr/bin/env python
 
-short description: Plots (three) filaments from EAGLE simulation (contours overlaid or noise added for mock observation)
+""" Plots a filament from EAGLE simulation (contours overlaid or noise added for mock observation)
 
-description:
+Usage: HalphaSBplot_filaments.py [-h] [-v] [-r RESOLUTION] [-t EXPTIME] [--mockobs]
+
+Options:
+    -h, --help                          Show this screen.
+    -v, --verbose                       Show extra information [default: False]  
+    --debug                             Show extra extra information [default: False]  
+    --mockobs                           Plot a mock observation (rather than just the EAGLE simulation). 
+    -r RESOLUTION, --out RESOLUTION     The desired resolution of the filament image in arcsec. [default: 500]
+    -t EXPTIME, --time EXPTIME          The desired exposure time to integrate the filament over in seconds. [default: 10**3*3600.]
+
+Examples:
+
+Longer description:
 Script streamlining the process of plotting the EAGLE filaments (with surface brightness contours and binned correctly).
 Takes inputs for distance to filament and desired angular resolution of filament, then bins EAGLE data array read in from 
 npz files obtained from Nastasha Wijers at Leiden Observatory.  Plots filament with SB contours overlaid.
@@ -136,6 +145,13 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     print "the total noise (squarerooted) is: %s"%sigma
 
     return B_sky_array, np.log10(detsignal + sigma)
+
+SBdata_500arcsec = getSBatfilament(data_5,500,distance)
+noise,SBdata_500arcsec_200hr = addnoise(SBdata_500arcsec,resolution,exptime=10**2*3600.,CMOS=True)
+SBdata_500arcsec_200hr_sub = SBdata_500arcsec_200hr-5.248
+fig = plt.figure(figsize = (9.5, 10.))
+ax1 = plt.subplot(111)
+plotfilament(SBdata_500arcsec_200hr_sub**0.2,ax1,contours=False,mockobs=True,colmap='gist_gray')
 
 def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mockobs=False,labelaxes=False):
     # setting up the plot
