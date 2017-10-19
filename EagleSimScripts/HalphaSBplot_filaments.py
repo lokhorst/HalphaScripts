@@ -2,15 +2,18 @@
 
 """ Plots a filament from EAGLE simulation (contours overlaid or noise added for mock observation)
 
-Usage: HalphaSBplot_filaments.py [-h] [-v] [-r RESOLUTION] [-t EXPTIME] [--mockobs]
+Usage: HalphaSBplot_filaments.py [-h] [-s] [-v] [--debug] [-c] [-r RESOLUTION] [-t EXPTIME] [--mockobs]
 
 Options:
     -h, --help                          Show this screen.
     -v, --verbose                       Show extra information [default: False]  
+    -s, --save                          Save intermediate array products [default: False]
     --debug                             Show extra extra information [default: False]  
+
+    -c, --cmos                          Use specs for new cameras in mock observation
     --mockobs                           Plot a mock observation (rather than just the EAGLE simulation). 
-    -r RESOLUTION, --out RESOLUTION     The desired resolution of the filament image in arcsec. [default: 500]
-    -t EXPTIME, --time EXPTIME          The desired exposure time to integrate the filament over in seconds. [default: 10**3*3600.]
+    -r RESOLUTION, --res RESOLUTION     The desired resolution of the filament image in arcsec. [default: 500]
+    -t EXPTIME, --exptime EXPTIME       The desired exposure time to integrate the filament over in seconds. [default: 10**3*3600.]
 
 Examples:
 
@@ -146,13 +149,6 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 
     return B_sky_array, np.log10(detsignal + sigma)
 
-SBdata_500arcsec = getSBatfilament(data_5,500,distance)
-noise,SBdata_500arcsec_200hr = addnoise(SBdata_500arcsec,resolution,exptime=10**2*3600.,CMOS=True)
-SBdata_500arcsec_200hr_sub = SBdata_500arcsec_200hr-5.248
-fig = plt.figure(figsize = (9.5, 10.))
-ax1 = plt.subplot(111)
-plotfilament(SBdata_500arcsec_200hr_sub**0.2,ax1,contours=False,mockobs=True,colmap='gist_gray')
-
 def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mockobs=False,labelaxes=False):
     # setting up the plot
     if mockobs:
@@ -210,22 +206,6 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mocko
     cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
     #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
-
-fig = plt.figure(figsize = (10.5, 5.))
-ax1 = plt.subplot(111)
-plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
-plt.show()
-
-fig = plt.figure(figsize = (7.5, 8.))
-ax1 = plt.subplot(311)
-ax2 = plt.subplot(312)
-ax3 = plt.subplot(313)
-
-plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
-plotfilament(SBdata_exp1_sub**0.2,ax2,colmap='gist_gray',contours=False,mockobs=True)
-plotfilament(SBdata_100_withnoise_sub**0.2,ax3,colmap='gist_gray',contours=False,mockobs=True)
-plt.show()
-
 
 def loaddata():
     sl = [slice(None,None,None), slice(None,None,None)]
@@ -313,52 +293,73 @@ def getSBatfilament(data,resolution,distance):
     SBdata = extractdata(xfull,yfull,datares)
     return SBdata
 
+#-------------------------------------- BODY OF PROGRAM STARTS HERE ---------------------------------------------#
+
 if __name__ == "__main__":
-    #-------------- pick your distance and desired resolution ---------------------------------------------#
-    resolution = 100.  ### arcsec
+    
+    # Read in input arguments
+    arguments       = docopt.docopt(__doc__)
+    verbose         = arguments['--verbose']
+    debugging       = arguments['--debug']
+    save            = arguments['--save']
+
+    resolution      = arguments['--res']
+    exptime         = arguments['--exptime']
+    mockobs         = arguments['--mockobs']
+    cmos            = arguments['--cmos']
+    
+    if verbose:
+        print arguments
+    
     distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
     boxnum = '1' ### which filament (there are 3)
     factor = 1
     machine='chinook'
-    #------------------------------------------------------------------------------------------------------#
 
+    # load a slice of data
     data_5 = loaddata() # load in data at full resolution
 
-    #-------------- plotting filaments at different distances and resolutions, with contours --------------#
-    # pull out the pixel limits for boxes that surround the three filaments
-    xboxes, yboxes = defineboxes(data_5)
-    # takes in pixel limits that bound a specific box and create arrays of x and y pixel values to pick out SB 
-    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-    # use pixel arrays to extract SB data in a box from the data array
-    SBdata_5 = extractdata(xfull,yfull,data_5)
-    SBdata_average = np.log10(np.mean(10**SBdata_5))
-    SBdata_median  = np.median(SBdata_5)
-    # plot the filament with contours
-    fig = plt.figure(figsize = (7.5, 8.))
-    ax = plt.subplot(121)
-    plotfilament(SBdata_5,ax)
 
-    # repeat with different resolution
-    data_50Mpc_100arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
-    xboxes, yboxes = defineboxes(data_50Mpc_100arcsec)
-    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-    SBdata_50Mpc_100arcsec = extractdata(xfull,yfull,data_50Mpc_100arcsec)
-    fig = plt.figure(figsize = (7.5, 8.))
-    ax = plt.subplot(121)
-    plotfilament(SBdata_50Mpc_100arcsec,ax)
 
-    # repeat with different resolution
-    resolution = 500. ### arcsec
-    data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
-    xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
-    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-    SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
+    if mockobs:
+        SBdata = getSBatfilament(data_5,resolution,distance)
+        skynoise,mockobs = addnoise(SBdata,resolution,exptime=exptime,CMOS=cmos)
+        # make the data look better (scale)
+        mockobs_sub = mockobs - (int(np.min(mockobs)*100)/100.)
+        # plot the data
+        fig = plt.figure(figsize = (9.5, 5.))
+        ax1 = plt.subplot(111)
+        plotfilament(mockobs_sub**0.2,ax1,contours=False,mockobs=True,colmap='gist_gray')
+        plt.savefig('mockobs_res%sas_exptime%shr.png'%(resolution,round(exptime/3600.)))
+        
+        
+"""
+        
+    fig = plt.figure(figsize = (10.5, 5.))
+    ax1 = plt.subplot(111)
+    plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
+    plt.show()
+
     fig = plt.figure(figsize = (7.5, 8.))
-    ax = plt.subplot(121)
-    print('SBdata_50Mpc away, 500arcsec per pix, %s Mpc per pix'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-    plotfilament(SBdata_50Mpc_500arcsec,ax)
-    plt.title('SBdata_50Mpc_500arcsec %s Mpc per pixel'%(newsize/32000.*100./SBdata_50Mpc_500arcsec.shape[0]))
-    #----------------------------------------------------------------------------------------------------------#
+    ax1 = plt.subplot(311)
+    ax2 = plt.subplot(312)
+    ax3 = plt.subplot(313)
+
+    plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
+    plotfilament(SBdata_exp1_sub**0.2,ax2,colmap='gist_gray',contours=False,mockobs=True)
+    plotfilament(SBdata_100_withnoise_sub**0.2,ax3,colmap='gist_gray',contours=False,mockobs=True)
+    plt.show()
+    
+        
+        
+    resolution = 500.
+    SBdata_500arcsec = getSBatfilament(data_5,resolution,distance)
+    noise,SBdata_500arcsec_200hr = addnoise(SBdata_500arcsec,resolution,exptime=10**2*3600.,CMOS=True)
+    SBdata_500arcsec_200hr_sub = SBdata_500arcsec_200hr-5.248
+    fig = plt.figure(figsize = (9.5, 10.))
+    ax1 = plt.subplot(111)
+    plotfilament(SBdata_500arcsec_200hr_sub**0.2,ax1,contours=False,mockobs=True,colmap='gist_gray')
+        
 
     #----------------------------------------- Add noise to a filament and then plot --------------------------#
     # first try adding noise to the SBdata in a filament and then plotting
@@ -487,3 +488,4 @@ if __name__ == "__main__":
     ax1.plot(np.append(xbox*100./3200.*factor,xbox[0]*100./3200.*factor),np.append(ybox*100./3200.*factor,ybox[0]*100./3200.*factor),color='r')
     plt.show()
 
+"""
