@@ -118,7 +118,12 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     
     ### ReadOutNoise ###
     numexposures = exptime/3600. # hour long exposures
+    R_squared_array = np.zeros((data.shape[0],data.shape[1]))
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            R_squared_array[x][y]=np.mean(np.random.normal(np.sqrt(R_squared),np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   
     R_squared_total = R_squared * round(numexposures)
+    R_squared_total_array = R_squared_array * round(numexposures)
     print "the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s"%(R_squared,numexposures,R_squared_total)
     print "the total R_squared value [electrons] multiplying by numpix read out is: %s"%(R_squared_total*numpixel)
     
@@ -127,6 +132,8 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     # to do: add noise to dark current and read noise?
     
     sigma = np.sqrt(detsignal + B_sky_array*exptime*numpixel + D*exptime*numpixel + R_squared_total*numpixel)
+    print "the total noise (not squarerooted) is: %s"%(detsignal + B_sky_array*exptime*numpixel + D*exptime*numpixel + R_squared_total*numpixel)
+    print "the total noise (squarerooted) is: %s"%sigma
 
     return B_sky_array, np.log10(detsignal + sigma)
 
@@ -407,6 +414,7 @@ if __name__ == "__main__":
         plt.show()
         
         # 100 hours (adjust so pretty!)
+        noise,SBdata_exp0 = addnoise(SBdata,resolution,exptime=10**2*3600.,CMOS=True)  
         SBdata_100hr_subtract = SBdata_exp0 - (int(np.min(SBdata_exp0)*100)/100.)
         fig = plt.figure(figsize = (9.5, 10.))
         ax1 = plt.subplot(111)
