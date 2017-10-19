@@ -70,50 +70,65 @@ def getBackground(start,end,machine,plot=False):
 def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
 ### DOESN'T WORK YET ###
     # Dragonfly info
-    area_lens = np.pi*(14.3/2)**2 * 48.               # cm^2, 48 * 14.3 cm diameter lenses
-    pix_size = 2.8                                    # arcsec
-    ang_size_pixel  = (pix_size * (1./206265.))**2    # rad^2, the pixel size of the CCD
-    tau_l = 0.85  # transmittance of the Dragonfly lens
-    tau_f = 1.    # transmittance of the Halpha filter -- assumed for now
-    B = getBackground(656.3,657.3,machine) # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
-    print "the background in the bandwidth is: %s"%B
-    D = 0.04  # *u.photon/u.second                             # dark current (electrons / s) 
+    area_lens = np.pi*(14.3/2)**2 * 48.                 # cm^2, 48 * 14.3 cm diameter lenses
+    pix_size = 2.8                                      # arcsec
+    ang_size_pixel  = (pix_size * (1./206265.))**2      # rad^2, the pixel size of the CCD
+    tau_l = 0.85                                        # transmittance of the Dragonfly lens
+    tau_f = 1.                                          # transmittance of the Halpha filter -- assumed for now
+    B = getBackground(656.3,657.3,machine)              # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    D = 0.04                                            # dark current (electrons / s) 
     if CMOS:
         print "Using new CMOS cameras..."
-        QE = 0.70  # quantum efficiency of the CMOS detector
-        R_squared = 1.**2 # * u.photon                           # read noise (electrons)
+        QE = 0.70                                       # quantum efficiency of the CMOS detector
+        R_squared = 2.**2                               # read noise (electrons)
     else:
         print "Using old cameras..."
-        QE = 0.48     # quantum efficiency of the CCDs
-        R_squared = 10.**2 # * u.photon                           # read noise (electrons)
-
+        QE = 0.48                                       # quantum efficiency of the CCDs
+        R_squared = 10.**2                              # read noise (electrons)
+    R_squared = 50.**2
+    
     binpix_size = resolution # arcsec
     numpixel = round((binpix_size/pix_size)**2)
     print "the number of pixels is %s"%numpixel
     
-    'total signal incident (not including atm absorption) in exposure time'
-    totsignal = np.log10(10**data * exptime) # log( photons / cm^2 /sr )
-    'total signal detected (accounting for system efficiency)'
-    detsignal = np.log10(10**totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel)
     
-    ### to do:  add noise to the signal as done below for the sky background.
+    ### total signal incident (not including atm absorption) in exposure time ###
+    totsignal = 10**data * exptime # ( photons / cm^2 /sr )
+    ### total signal detected (accounting for system efficiency) ###
+    detsignal = totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel
     
+    print "the total signal [electrons] detected ranges from: %s to %s"%(np.min(detsignal),np.max(detsignal))
+    # to do:  add noise to the signal as done below for the sky background.
+    
+    ### BackgroundSkyNoise ###
     'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
     B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
-    print "the background signal, B_sky, is: %s"%B_sky
-    
+    print "the background in the bandwidth is: %s"%B
+    print "the background signal, B_sky [ph/s (in a pixel)], is: %s"%B_sky
     # add noise to the background sky signal by replacing each value with a random value taken from a gaussian distribution with a mean of its value and st dev of sqrt of its value
     # set up array to contain sky background noise, use mean from the number of pixels bin over to make the map
     B_sky_array = np.zeros((data.shape[0],data.shape[1]))
     for x in range(data.shape[0]):
         for y in range(data.shape[1]):
             B_sky_array[x][y]=np.mean(np.random.normal(B_sky,np.sqrt(B_sky),int(numpixel)))    
+    B_sky_total = B_sky*exptime*numpixel
+    B_sky_array_total = B_sky_array*exptime*numpixel
+    print "the mean total background signal, B_sky_total [electrons], is: %s"%B_sky_total
+    print "the total background noisy signal [electrons] ranges from: %s to %s"%(np.min(B_sky_array_total),np.max(B_sky_array_total))
     
-    # add noise to dark current and read noise?
+    ### ReadOutNoise ###
+    numexposures = exptime/3600. # hour long exposures
+    R_squared_total = R_squared * round(numexposures)
+    print "the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s"%(R_squared,numexposures,R_squared_total)
+    print "the total R_squared value [electrons] multiplying by numpix read out is: %s"%(R_squared_total*numpixel)
     
-    sigma = np.log10(np.sqrt(10**detsignal + B_sky_array*exptime*numpixel + D*exptime*numpixel + R_squared*numpixel))
+    ### DarkCurrent ###
+    print "the total dark current [electrons] is: %s "%(D*exptime*numpixel)
+    # to do: add noise to dark current and read noise?
+    
+    sigma = np.sqrt(detsignal + B_sky_array*exptime*numpixel + D*exptime*numpixel + R_squared_total*numpixel)
 
-    return B_sky_array, np.log10(10**detsignal + np.sqrt(B_sky_array*exptime*numpixel))
+    return B_sky_array, np.log10(detsignal + sigma)
 
 def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mockobs=False,labelaxes=False):
     # setting up the plot
@@ -130,12 +145,12 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mocko
     if labelaxes:
         ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
         ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-        xlabels = [0,0.6,1.2,1.8,2.4,3.0]
-        ax.set_xticks([0,5,10,15,20,25], minor=False)
-        ax.set_xticklabels(xlabels, minor=False)
-        ylabels = [ 0.,0.25,0.5]
-        ax.set_yticks([0,2.5,5], minor=False)
-        ax.set_yticklabels(ylabels, minor=False)
+        #xlabels = [0,0.6,1.2,1.8,2.4,3.0]
+        #ax.set_xticks([0,5,10,15,20,25], minor=False)
+        #ax.set_xticklabels(xlabels, minor=False)
+        #ylabels = [ 0.,0.25,0.5]
+        #ax.set_yticks([0,2.5,5], minor=False)
+        #ax.set_yticklabels(ylabels, minor=False)
     
         ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
         ax.xaxis.set_label_position('top') 
@@ -154,7 +169,7 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mocko
         levels = [0,1,2]
         colours = ['yellow','cyan','purple']
     else:
-        img = ax.imshow(SBdata.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+        img = ax.imshow(SBdata.T,origin='lower',extent=(0,3.7,0,0.7), cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
         levels = np.array([-2,-1,0,1,2,3])
         colours = ('red','orange','yellow','cyan','purple','pink')
         #levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
@@ -172,6 +187,21 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=True,mocko
     cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
     #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
     cbar.ax.tick_params(labelsize=fontsize)
+
+fig = plt.figure(figsize = (10.5, 5.))
+ax1 = plt.subplot(111)
+plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
+plt.show()
+
+fig = plt.figure(figsize = (7.5, 8.))
+ax1 = plt.subplot(311)
+ax2 = plt.subplot(312)
+ax3 = plt.subplot(313)
+
+plotfilament(SBdata_full,ax1,contours=False,labelaxes=True)
+plotfilament(SBdata_exp1_sub**0.2,ax2,colmap='gist_gray',contours=False,mockobs=True)
+plotfilament(SBdata_100_withnoise_sub**0.2,ax3,colmap='gist_gray',contours=False,mockobs=True)
+plt.show()
 
 
 def loaddata():
@@ -359,6 +389,9 @@ if __name__ == "__main__":
         noise,SBdata_exp1 = addnoise(SBdata,resolution,exptime=10**3*3600.,CMOS=True)
         noise,SBdata_exp2 = addnoise(SBdata,resolution,exptime=10**4*3600.,CMOS=True)
         noise,SBdata_exp3 = addnoise(SBdata,resolution,exptime=10**5*3600.,CMOS=True)
+
+        noise,SBdata_exp0 = addnoise(SBdata,resolution,exptime=10**2*3600.,CMOS=False)    
+
         
         fig = plt.figure(figsize = (7.5, 8.))
         ax1 = plt.subplot(221)
@@ -377,6 +410,7 @@ if __name__ == "__main__":
         SBdata_100hr_subtract = SBdata_exp0 - (int(np.min(SBdata_exp0)*100)/100.)
         fig = plt.figure(figsize = (9.5, 10.))
         ax1 = plt.subplot(111)
+        plotfilament(SBdata_100hr_subtract**0.2,ax1,contours=False,mockobs=True,colmap='gist_gray')
         
         
     plot_diffexptime(500,distance)
