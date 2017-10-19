@@ -301,7 +301,7 @@ if __name__ == "__main__":
     arguments       = docopt.docopt(__doc__)
     verbose         = arguments['--verbose']
     debugging       = arguments['--debug']
-    save            = arguments['--save']
+    saveloc         = arguments['--saveloc']
 
     resolution      = arguments['--res']
     exptime         = arguments['--exptime']
@@ -323,6 +323,8 @@ if __name__ == "__main__":
 
     if mockobs:
         SBdata = getSBatfilament(data_5,resolution,distance)
+        if saveloc:
+            np.savez(saveloc+'/SBdata_%sarcsec_res.npz',SBdata)
         skynoise,mockobs = addnoise(SBdata,resolution,exptime=exptime,CMOS=cmos)
         # make the data look better (scale)
         mockobs_sub = mockobs - (int(np.min(mockobs)*100)/100.)
