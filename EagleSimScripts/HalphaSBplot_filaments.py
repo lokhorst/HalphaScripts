@@ -486,6 +486,10 @@ if __name__ == "__main__":
 
     factor = 1. ## if you are plotting raw data (un-reduced in resolution)
 
+    xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*pixlength/size
+    ybox_1 = np.array([10.5,14,14,10.5])*pixlength/size
+    xystarts = [45.2,10.]    
+    size=4.
     get_halpha_SB.makemap(data_5[(xystarts[0]/100.*3200./factor):((xystarts[0]+size)/100.*3200./factor),(xystarts[1]/100.*3200./factor):((xystarts[1]+size)/100.*3200./factor)],size,ax1,xystarts = xystarts)
     ax1.plot(np.append(xbox*100./3200.*factor,xbox[0]*100./3200.*factor),np.append(ybox*100./3200.*factor,ybox[0]*100./3200.*factor),color='r')
     plt.show()
