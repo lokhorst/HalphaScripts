@@ -83,8 +83,8 @@ scale_100 = 0.467 #kpc/"  ## at z = 0.023 (about 100 Mpc)
 scale_200 = 0.928 #kpc/"  ## at z = 0.047. (about 200 Mpc)
 scale_1000 = 2.178 #kpc/" ## at z = 0.12 (about 1000 Mpc)
 
-x_angFOV = 3.*60.*60. #" 
-y_angFOV = 2.*60.*60. #"  
+x_angFOV = 3.*60.*60. # " 
+y_angFOV = 2.*60.*60. # "  
 x_FOV_50  = x_angFOV * scale_50 / 1000. # Mpc
 y_FOV_50  = y_angFOV * scale_50 / 1000. # Mpc
 x_FOV_100 = x_angFOV * scale_100 / 1000. # Mpc

@@ -8,6 +8,89 @@ from astropy import constants as const
 from astropy import units as u
 #%matplotlib inline
 
+def dothis():
+    print("it worked")
+
+def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,colorbar=False,mockobs=False,labelaxes=False,label=''):
+    # setting up the plot
+    if mockobs:
+        clabel = r'log signal (photons)'
+    else:
+        clabel = r'log photons/cm$^2$/s/sr'
+    Vmin = None
+    Vmax= None
+    #fig = plt.figure(figsize = (7.5, 8.))
+    #ax = plt.subplot(121)
+    fontsize=13
+
+    if labelaxes:
+        ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+        ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+    
+        ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
+        ax.xaxis.set_label_position('top') 
+        ax.xaxis.tick_top()
+    else:
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        
+    #colmap = 'viridis'#'gist_gray'#'plasma'#'viridis' #'afmhot'
+    ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
+
+    
+    ## If you only want to plot the SB greater than 1 photon/s/cm^2/arcsec^2 then do the following
+    if onlyyellow:
+        SBonlyyellow = SBdata
+        SBonlyyellow[SBdata<0.] = -3.
+        img = ax.imshow(SBonlyyellow.T,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+        levels = [0,1,2]
+        colours = ['yellow','cyan','purple']
+    else:
+        img = ax.imshow(SBdata.T,origin='lower',extent=(0,3.7,0,0.7), cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+        levels = np.array([-2,-1,0,1,2,3])
+        colours = ('red','orange','yellow','cyan','purple','pink')
+        #levels = np.array([-2,-1.5,-1,-0.5,0,0.3,1,1.5,2,2.5,3])
+        #colours = ('red','black','orange','black','yellow','black','cyan','black','purple','black','pink')
+    
+        #img = ax.imshow(data.T,extent=(xystarts[0],xystarts[0]+xsize,xystarts[1],xystarts[1]+ysize),origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest') # vmin = None, vmax=Vmax,
+    
+    # plot contours
+    cmap = cm.PRGn
+    if contours:
+        ax.contour(SBdata.T,levels,colors=colours)#,cmap=cm.get_cmap(cmap, len(levels) - 1),)
+
+    div = axgrid.make_axes_locatable(ax)
+    # plot colorbar
+    if colorbar:
+        cax = div.append_axes("bottom",size="15%",pad=0.1)
+        cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
+        cbar.solids.set_edgecolor("face")
+        cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
+        #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
+    
+    font = {'family': 'serif',
+        'color':  'yellow',
+        'weight': 'bold',
+        'size': 12,
+        }
+    
+    font = {'family': 'serif',
+        'color':  'black',
+        'weight': 'bold',
+        'size': 12,
+        }
+    
+    # Top right
+    # plt.text(3.6,0.58,label,fontdict=font,horizontalalignment='right',backgroundcolor='black')
+    
+    # Bottom middle
+    plt.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
+
+    plt.tight_layout()
+
 def imreduce(img, factor, log=True, method = 'average'):
     """
         img: 2D image array
@@ -148,4 +231,88 @@ def extractdata(xfull,yfull,data):
                 SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
     return SBdata
 
+def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
+    # Dragonfly info
+    area_lens = np.pi*(14.3/2)**2 * 48. *10.                # cm^2, 48 * 14.3 cm diameter lenses
+    pix_size = 2.8                                      # arcsec
+    ang_size_pixel  = (pix_size * (1./206265.))**2      # rad^2, the pixel size of the CCD
+    tau_l = 0.85                                        # transmittance of the Dragonfly lens
+    tau_f = 1.                                          # transmittance of the Halpha filter -- assumed for now
+    #B = getBackground(656.3,657.3,machine)              # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    B = 0.560633
+    D = 0.04       # dark current (electrons / s) 
     
+    if CMOS:
+   #     print "Using new CMOS cameras..."
+        QE = 0.70                                       # quantum efficiency of the CMOS detector
+        R_squared = 2.**2                               # read noise (electrons)
+    else:
+   #     print "Using old cameras..."
+        QE = 0.48                                       # quantum efficiency of the CCDs
+        R_squared = 10.**2                              # read noise (electrons)
+    
+   # R_squared = 50.**2
+    
+    binpix_size = resolution # arcsec
+    numpixel = round((binpix_size/pix_size)**2)
+    #print "the number of pixels is %s"%numpixel
+    
+    
+    ### total signal incident in exposure time ###
+    totsignal = 10**data * exptime # ( photons / cm^2 /sr )
+    ### total signal detected (accounting for system efficiency) ###
+    detsignal = totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel
+    #print "the total object signal [electrons] detected ranges from: %s to %s"%(np.min(detsignal),np.max(detsignal))
+    #print "an example of the object signal [electrons] is: %s"%detsignal[0]
+
+
+    ### Background from stuff in space ###
+    'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
+    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
+    #print "the background in the bandwidth is: %s"%B
+    #print "the background signal, B_sky [ph/s (in a pixel)], is: %s"%B_sky
+    B_sky_inexptime = B_sky*exptime
+    B_sky_total     = B_sky*exptime*numpixel    
+    B_sky_array = np.zeros((data.shape[0],data.shape[1]))
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            B_sky_array[x][y]=np.random.normal(0,np.sqrt(B_sky_total+detsignal[x][y])) 
+#            B_sky_array[x][y]=np.random.poisson(B_sky_total)
+    B_sky_array_total = B_sky_array
+    #print "the mean total background signal, B_sky_total [electrons], is: %s"%B_sky_total
+    #print "the total background noisy signal [electrons] ranges from: %s to %s"%(np.min(B_sky_array_total),np.max(B_sky_array_total))
+    
+    # Signal
+    noiseadded_signal = detsignal + B_sky_total + B_sky_array
+    
+    ### ReadOutNoise ###
+    numexposures = exptime/3600. # hour long exposures
+    R_squared_array = np.zeros((data.shape[0],data.shape[1]))
+    for x in range(data.shape[0]):
+        for y in range(data.shape[1]):
+            R_squared_array[x][y]=np.mean(np.random.normal(np.sqrt(R_squared),np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   
+    R_squared_total = R_squared * round(numexposures)
+    R_squared_total_array = R_squared_array * round(numexposures)
+    #print "the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s, %s"%(R_squared,numexposures,R_squared_total,R_squared_total_array[0])
+    #print "the total R_squared value [electrons] multiplying by numpix read out is: %s, %s"%((R_squared_total*numpixel),(R_squared_total_array[0]*numpixel))
+    
+    ### DarkCurrent ###
+    noise_from_detector = 0.0
+    #D_total = D*exptime*numpixel
+    #D_array = np.zeros((data.shape[0],data.shape[1]))
+    #for x in range(data.shape[0]):
+    #    for y in range(data.shape[1]):
+    #        D_array[x][y]=np.random.normal(D_total,np.sqrt(D_total)) 
+    #D_array_total = D_array
+    #print "the total dark current [electrons] is: %s , %s"%(D_total, D_array_total[0])
+
+    #noise_from_detector = D_array_total + R_squared_total_array*numpixel
+    #print "an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array_total + D_array_total + R_squared_total_array*numpixel)[0]
+    #print "an example total noise (squarerooted) is: %s"%sigma[0]
+    
+    
+    # Now add noise from the detector
+    
+    noiseadded_signal = noiseadded_signal + noise_from_detector
+    
+    return noiseadded_signal

@@ -195,6 +195,8 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     
     return noiseadded_signal
 
+def dothis():
+    print("it worked")
 
 if __name__ == "__main__":
 
