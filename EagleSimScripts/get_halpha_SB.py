@@ -119,11 +119,16 @@ def imreduce(img, factor, log=True, method = 'average'):
         inimg = np.log10(inimg)
     return inimg.T
 
-def makemap(data,size,ax,xystarts = [0.,0.],title = ''):
+def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar=True,mockobs=False,labelaxes=True,label=''):
     fontsize=13
     #xystarts = [0.,0.] # lower left origin of the plot
     Vmin = None
     Vmax = None
+    
+    if mockobs:
+        clabel = r'log signal (photons)'
+    else:
+        clabel = r'log photons/cm$^2$/s/sr'
     
     if type(size) == float or type(size) == int:
         print('The type of size is '+str(type(size)))
@@ -137,28 +142,71 @@ def makemap(data,size,ax,xystarts = [0.,0.],title = ''):
     #fig = plt.figure(figsize = (5.5, 5.)) # large size just as a trick to get higher resolution
     #fig = plt.figure(figsize = (11., 10.))
     #ax = plt.subplot(111)
-    ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
-    ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-    ax.minorticks_on()
-    ax.tick_params(labelsize=fontsize)
     
-    colmap = 'viridis' #'afmhot'
+    if labelaxes:
+        ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+        ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+        ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
+        #ax.xaxis.set_label_position('top') 
+        ax.xaxis.set_label_position('bottom') 
+        #ax.xaxis.tick_top()
+        #ax.minorticks_on()
+    else:
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    #colmap = 'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     
     # nearest neighbour interpolation does not do any averaging, it just picks the nearest point and uses that as the value for a specific section in the image
     img = ax.imshow(data.T,extent=(xystarts[0],xystarts[0]+xsize,xystarts[1],xystarts[1]+ysize),origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest') # vmin = None, vmax=Vmax,
     
-    plt.title(title,fontsize=fontsize)
+    #plt.title(label,fontsize=fontsize)
     div = axgrid.make_axes_locatable(ax)
-    cax = div.append_axes("right",size="5%",pad=0.1)
-    cbar = plt.colorbar(img, cax=cax)
+        
+    if colorbar:
+        #cax = div.append_axes("right",size="5%",pad=0.1)
+        
+        # bottom color bar:
+        #cax = div.append_axes("bottom",size="15%",pad=0.1)
+        #cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
+        
+        # top color bar:
+        cax = div.append_axes("top",size="15%",pad=0.1)
+        cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
+
+        cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
+        cbar.ax.xaxis.set_label_position('top')      
+        cbar.ax.xaxis.set_ticks_position('top')
+        
+        cbar.solids.set_edgecolor("face")
+        #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
     
-    clabel = r'log photons/cm$^2$/s/sr'
-    cbar.solids.set_edgecolor("face")
-    cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
-    cbar.ax.tick_params(labelsize=fontsize)
+    font = {'family': 'serif',
+        'color':  'yellow',
+        'weight': 'bold',
+        'size': 12,
+        }
     
-    return img
+    font = {'family': 'serif',
+        'color':  'black',
+        'weight': 'bold',
+        'size': 12,
+        }
+    
+    # Top right
+    # plt.text(3.6,0.58,label,fontdict=font,horizontalalignment='right',backgroundcolor='black')
+    
+    # Bottom middle
+    #plt.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
+
+    plt.tight_layout()
+    
+    
+    #return img
     #plt.show()
 
 def indices_region(xbox,ybox):
