@@ -26,7 +26,10 @@ def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,c
     if labelaxes:
         ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
         ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-    
+        #xlabels = [0,0.6,1.2,1.8,2.4,3.0]
+        #ax.set_xticks([0,5,10,15,20,25], minor=False)
+        #ax.set_xticklabels(xlabels, minor=False)
+        ax.locator_params(axis='y', nticks=3)
         ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
         ax.xaxis.set_label_position('top') 
         ax.xaxis.tick_top()
