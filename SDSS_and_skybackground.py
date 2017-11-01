@@ -120,7 +120,7 @@ def plotSDSShist(ax,start=6550.,end=7450.):
     # locations off 50Mpc, 100Mpc, 200Mpc, 500Mpc away
     for wavelen,name in zip([lambda_50,lambda_100,lambda_200,lambda_500],['50 Mpc','100 Mpc','200 Mpc','500 Mpc']):
         ax.plot([wavelen,wavelen],[0.,35000.],'k--',linewidth=2)
-        ax.text(wavelen,25000,name,rotation=90)
+        ax.text(wavelen-20.,25000,name,rotation='vertical')
 
 def plotskybackground(ax,start=6550.,end=7450.):
     indices1 = (wavelength1>start) & (wavelength1<end)
@@ -184,23 +184,32 @@ if __name__ == "__main__":
         print("loading UVES line lists...")
     line_wavelength=loadUVESlinelists()
     
+    def plot1():
+        f = plt.figure(figsize=(3.,3.))
+        f, (ax1, ax2) = plt.subplots(2, figsize=(10.,5.))
+        #ax1.set_title('UVES Sky Background')
+        plotSDSShist(ax1,start=6550.,end=7000.)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plotskybackground(ax2,start=6550.,end=7000.)
+        f.subplots_adjust(hspace=0.1)
     
-    f = plt.figure(figsize=(3.,3.))
-    f, (ax1, ax2) = plt.subplots(2, figsize=(10.,5.))
-    #ax1.set_title('UVES Sky Background')
-    plotSDSShist(ax1,start=6550.,end=7000.)
-    plt.setp(ax1.get_xticklabels(), visible=False)
-    plotskybackground(ax2,start=6550.,end=7000.)
-    f.subplots_adjust(hspace=0.1)
+    def plot2():
+        f = plt.figure(figsize=(3.,3.))
+        f, (ax1, ax2) = plt.subplots(2, figsize=(10.,5.))
+        #ax1.set_title('UVES Sky Background')
+        plotSDSShist(ax1,start=7000.,end=7450.)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plotskybackground(ax2,start=7000.,end=7450.)
+        f.subplots_adjust(hspace=0.1)
+    
+    def plot3():
+        f = plt.figure(figsize=(3.,10.))
+        f, (ax1, ax2) = plt.subplots(2, figsize=(10.,5.))
+        plotSDSShist(ax1,start=6550.,end=7450.)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plotskybackground(ax2,start=6550.,end=7450.)
+        f.subplots_adjust(hspace=0.1)
+    
+    plot3()
     plt.show()
-    
-    f = plt.figure(figsize=(3.,3.))
-    f, (ax1, ax2) = plt.subplots(2, figsize=(10.,5.))
-    #ax1.set_title('UVES Sky Background')
-    plotSDSShist(ax1,start=7000.,end=7450.)
-    plt.setp(ax1.get_xticklabels(), visible=False)
-    plotskybackground(ax2,start=7000.,end=7450.)
-    f.subplots_adjust(hspace=0.1)
-    plt.show()
-    
     
