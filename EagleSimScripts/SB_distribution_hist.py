@@ -11,8 +11,9 @@ Options:
 
 Examples: python SB_distribution_hist.py -v -p 
 
-"""
+Note:  See Halpha_SBhist.py for other SB histogram plots
 
+"""
 
 import os
 import numpy as np
@@ -26,6 +27,7 @@ import mpl_toolkits.axes_grid1 as axgrid
 from astropy import constants as const
 from astropy import units as u
 
+import plot_DragonflyFOVofEAGLE
 import get_halpha_SB
 
 def testplot():
@@ -61,7 +63,7 @@ y_angFOV = 2.*60.*60. # "
 x_FOV = {distance: pixscale[distance]*x_angFOV for distance in ['50Mpc','100Mpc','200Mpc','500Mpc']}  # cMpc
 y_FOV = {distance: pixscale[distance]*y_angFOV for distance in ['50Mpc','100Mpc','200Mpc','500Mpc']}  # cMpc
 
-def loaddata():
+def loaddistancedata():
     fnames_100 = {'50Mpc':'data_50Mpc_100arcsec.npz','100Mpc':'data_100Mpc_100arcsec.npz','200Mpc':'data_200Mpc_100arcsec.npz','500Mpc':'data_500Mpc_100arcsec.npz'}  ## two level dictionary when want different resolutions?
     resolution=100. #arcsec
     # prep data locations
@@ -81,10 +83,10 @@ def loaddata():
                 data = (np.load(fname)['arr_0'])[sl]
             else:
                 print("data not saved, loading from original files now...")
-                data = loaddata()
+                data = get_halpha_SB.loaddata(machine,factor=1)
                 np.savez(fname,data)
                 
-            data_tuple = changeres(distance,100,data)
+            data_tuple = plot_DragonflyFOVofEAGLE.changeres(distance,100,data)
             data_tuple_array.append(data_tuple)
             np.savez(fname,data_tuple)
             
@@ -127,22 +129,13 @@ def testplot():
         get_halpha_SB.makemap(data,size,axis,xystarts = xystarts)
     
 def plothists():
-    f, ((ax1, ax2, ax3, ax4)) = plt.subplots(1, 4, figsize = (15.5, 15.))
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (5.5, 5.))
     
     for distance,data,axis in zip(['50Mpc','100Mpc','200Mpc','500Mpc'],[data_50_100_FOV,data_100_100_FOV,data_200_100_FOV,data_500_100_FOV],[ax1,ax2,ax3,ax4]):
-    
-        hist, bin_edges = np.histogram(data, bins=50, range=[0.,5.],density=True)
-        """
-        From python documentation for numpy.histogram:
-        density : bool, optional
-        If False, the result will contain the number of samples in each bin. 
-        If True, the result is the value of the probability density function at the bin, 
-        normalized such that the integral over the range is 1. 
-        Note that the sum of the histogram values will not be equal to 1 unless bins of unity width are chosen; 
-        it is not a probability mass function.
-        Overrides the normed keyword if given.
-        """
-        axis.hist(np.ravel(data), bins=50, range=[0.,5.], density=True)
+        axis.hist(data.flatten(),bins=50,log='True',normed='True',histtype='step',label='noSF 27')
+        axis.set_ylabel(r'$N^{-1}_{pix}dN_{pix}/dlog_{10}S_{B}$')
+        axis.set_xlabel(r'$log_{10}S_{B}$ ($ph$ $s^{-1}$ $cm^{-2}$ $sr^{-1})$')
+        
 
 #-------------------------------------- BODY OF PROGRAM STARTS HERE ---------------------------------------------#
 
@@ -157,7 +150,7 @@ if __name__ == "__main__":
 
     if verbose:
         print('Loading data...')
-    data_dict=loaddata()
+    data_dict=loaddistancedata()
     if verbose:
         print('selecting out FOV data...')
     data_50_100_FOV,data_100_100_FOV,data_200_100_FOV,data_500_100_FOV=extractFOVs()
@@ -168,4 +161,5 @@ if __name__ == "__main__":
         plt.show()
 
     plothists()
-
+    plt.tight_layout()
+    plt.show()

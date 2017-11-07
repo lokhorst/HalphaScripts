@@ -367,3 +367,37 @@ def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     noiseadded_signal = noiseadded_signal + noise_from_detector
     
     return noiseadded_signal
+
+
+def loaddata(machine,factor=1):
+    sl = [slice(None,None,None), slice(None,None,None)]
+    if machine=='chinook':
+        homedir='/Users/lokhorst/Eagle/'
+    elif machine=='coho':
+        homedir='/Users/deblokhorst/eagle/SlicesFromNastasha/'
+
+    # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
+    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+
+    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+                 
+    # Load a 5Mpc slice of data
+    print('data1 ('+files_noSF_28[0]+')...')
+    data1 = (np.load(files_noSF_28[0])['arr_0'])[sl]
+    #data1 = get_halpha_SB.imreduce(data1, round(factor), log=True, method = 'average')
+    print('data11 ('+files_SF_28[0]+')...')
+    data11 = (np.load(files_SF_28[0])['arr_0'])[sl]
+    #data11 = get_halpha_SB.imreduce(data11, round(factor), log=True, method = 'average')
+    print('5 Mpc slice...')
+    data_5 = np.log10(10**data1+10**data11)
+    print('delete data1, data11...')
+    del data1
+    del data11
+    
+    return data_5
