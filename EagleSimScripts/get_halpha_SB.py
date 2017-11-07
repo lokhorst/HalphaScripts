@@ -206,7 +206,7 @@ def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar
     # Bottom middle
     #plt.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
 
-    plt.tight_layout()
+    #plt.tight_layout()
     
     
     #return img
