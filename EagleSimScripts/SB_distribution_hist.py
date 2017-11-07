@@ -30,6 +30,19 @@ from astropy import units as u
 import plot_DragonflyFOVofEAGLE
 import get_halpha_SB
 
+import matplotlib
+#plt.style.use('seaborn-dark-palette') #seaborn-deep, seaborn-pastel and seaborn-white
+#import seaborn as sns
+#sns.set_palette("husl")
+#plt.style.use('ggplot')
+plt.style.use('seaborn-bright')
+
+font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 16}
+
+matplotlib.rc('font', **font)
+
 def testplot():
     file_snapnum28_noSF = '/Users/lokhorst/Eagle/emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz' 
     sl = [slice(None,None,None), slice(None,None,None)] 
@@ -128,14 +141,38 @@ def testplot():
         size     = [x_FOV[distance], y_FOV[distance]]
         get_halpha_SB.makemap(data,size,axis,xystarts = xystarts)
     
-def plothists():
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (5.5, 5.))
+def plothists(norm=True,separate=True):
+    if separate:
+        f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (5.5, 5.))
     
-    for distance,data,axis in zip(['50Mpc','100Mpc','200Mpc','500Mpc'],[data_50_100_FOV,data_100_100_FOV,data_200_100_FOV,data_500_100_FOV],[ax1,ax2,ax3,ax4]):
-        axis.hist(data.flatten(),bins=50,log='True',normed='True',histtype='step',label='noSF 27')
-        axis.set_ylabel(r'$N^{-1}_{pix}dN_{pix}/dlog_{10}S_{B}$')
-        axis.set_xlabel(r'$log_{10}S_{B}$ ($ph$ $s^{-1}$ $cm^{-2}$ $sr^{-1})$')
-        
+        for distance,data,axis in zip(['50Mpc','100Mpc','200Mpc','500Mpc'],[data_50_100_FOV,data_100_100_FOV,data_200_100_FOV,data_500_100_FOV],[ax1,ax2,ax3,ax4]):
+            axis.hist(data.flatten(),bins=50,log='True',normed=norm,histtype='step',label=distance)
+            if norm:
+                axis.set_ylabel(r'$N^{-1}_{pix}dN_{pix}/dlog_{10}S_{B}$')
+            else:
+                axis.set_ylabel(r'$dN_{pix}/dlog_{10}S_{B}$')
+            axis.set_xlabel(r'$log_{10}S_{B}$ ($ph$ $s^{-1}$ $cm^{-2}$ $sr^{-1})$')
+            axis.set_title(distance)
+    
+    else:
+        #f = plt.figure(figsize = (5.5, 5.))
+        plt.figure()
+        for distance,data,linestyle in zip(['50Mpc','100Mpc','200Mpc','500Mpc'],[data_50_100_FOV,data_100_100_FOV,data_200_100_FOV,data_500_100_FOV],['-',':','-.','--']):
+            plt.hist(data.flatten(),bins=50,log='True',normed=norm,histtype='step',label=distance,linestyle=linestyle,lw=2)
+            #hist, bins = np.histogram(data.flatten(), bins=50,normed=norm)
+            #left,right = edges[:-1],edges[1:]
+            #X = np.array([left,right]).T.flatten()
+            #Y = np.array([bins,bins]).T.flatten()
+
+            #plt.step(bins[1:],np.log10(hist),linestyle=linestyle)
+            #plt.plot(X,Y, label=distance,linestyle='-',lw=1)   
+        if norm:
+            plt.ylabel(r'$N^{-1}_{pix}dN_{pix}/dlog_{10}S_{B}$')
+        else:
+            plt.ylabel(r'$dN_{pix}/dlog_{10}S_{B}$')
+        plt.xlabel(r'$log_{10}S_{B}$ ($ph$ $s^{-1}$ $cm^{-2}$ $sr^{-1})$')
+        #plt.ylim(1,10**3.2)
+        plt.legend()
 
 #-------------------------------------- BODY OF PROGRAM STARTS HERE ---------------------------------------------#
 
@@ -160,6 +197,6 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.show()
 
-    plothists()
+    plothists(norm=False,separate=False)
     plt.tight_layout()
     plt.show()

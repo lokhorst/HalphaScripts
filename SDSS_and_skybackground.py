@@ -16,15 +16,17 @@ Examples:
 import docopt
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
 from astropy.coordinates import Distance
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from mpl_toolkits.mplot3d import Axes3D
 from astropy.io import fits
 
-plt.style.use('seaborn-dark-palette')
-plt.style.use('ggplot')
+import matplotlib
+#plt.style.use('seaborn-dark-palette')
+import seaborn as sns
+sns.set_palette("husl")
+#plt.style.use('ggplot')
 font = {'family' : 'normal',
         'weight' : 'normal',
         'size'   : 16}
