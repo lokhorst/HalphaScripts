@@ -109,87 +109,109 @@ def loaddata(machine):
     return data_20
 
 
-def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
+def addnoise(data,resolution,R_squared=None,exptime=10**3*3600.,CMOS=False, debugging=True,):
     # Dragonfly info
     area_lens = np.pi*(14.3/2)**2 * 48. *10.                # cm^2, 48 * 14.3 cm diameter lenses
-    pix_size = 2.8                                      # arcsec
-    ang_size_pixel  = (pix_size * (1./206265.))**2      # rad^2, the pixel size of the CCD
-    tau_l = 0.85                                        # transmittance of the Dragonfly lens
-    tau_f = 1.                                          # transmittance of the Halpha filter -- assumed for now
-    #B = getBackground(656.3,657.3,machine)              # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
+    pix_size = 2.8                                          # arcsec
+    ang_size_pixel  = (pix_size * (1./206265.))**2          # rad^2, the pixel size of the CCD
+    tau_l = 0.85                                            # transmittance of the Dragonfly lens
+    tau_f = 1.                                              # transmittance of the Halpha filter -- assumed for now
+    #B = getBackground(656.3,657.3,machine)                  # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
     B = 0.560633
     D = 0.04       # dark current (electrons / s) 
-    
-    if CMOS:
-   #     print "Using new CMOS cameras..."
-        QE = 0.70                                       # quantum efficiency of the CMOS detector
-        R_squared = 2.**2                               # read noise (electrons)
-    else:
-   #     print "Using old cameras..."
-        QE = 0.48                                       # quantum efficiency of the CCDs
-        R_squared = 10.**2                              # read noise (electrons)
-    
-   # R_squared = 50.**2
-    
     binpix_size = resolution # arcsec
     numpixel = round((binpix_size/pix_size)**2)
-    #print "the number of pixels is %s"%numpixel
     
+    if R_squared is None:
+        if CMOS:
+            print "VERBOSE: Using new CMOS cameras..."
+            QE = 0.70                                       # quantum efficiency of the CMOS detector
+            R_squared = 2.**2                               # read noise (electrons)
+        else:
+            print "VERBOSE: Using old cameras..."
+            QE = 0.48                                       # quantum efficiency of the CCDs
+            R_squared = 10.**2                              # read noise (electrons)
     
-    ### total signal incident in exposure time ###
+    if debugging:
+        print "DEBUGGING: R_squared is : %s" % R_squared
+        print "DEBUGGING: the number of pixels is %s" % numpixel
+    
+    'total signal incident in exposure time'
     totsignal = 10**data * exptime # ( photons / cm^2 /sr )
-    ### total signal detected (accounting for system efficiency) ###
-    detsignal = totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel
-    #print "the total object signal [electrons] detected ranges from: %s to %s"%(np.min(detsignal),np.max(detsignal))
-    #print "an example of the object signal [electrons] is: %s"%detsignal[0]
-
-
-    ### Background from stuff in space ###
-    'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
-    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
-    #print "the background in the bandwidth is: %s"%B
-    #print "the background signal, B_sky [ph/s (in a pixel)], is: %s"%B_sky
-    B_sky_inexptime = B_sky*exptime
-    B_sky_total     = B_sky*exptime*numpixel    
-    B_sky_array = np.zeros((data.shape[0],data.shape[1]))
-    for x in range(data.shape[0]):
-        for y in range(data.shape[1]):
-            B_sky_array[x][y]=np.random.normal(0,np.sqrt(B_sky_total+detsignal[x][y])) 
-#            B_sky_array[x][y]=np.random.poisson(B_sky_total)
-    B_sky_array_total = B_sky_array
-    #print "the mean total background signal, B_sky_total [electrons], is: %s"%B_sky_total
-    #print "the total background noisy signal [electrons] ranges from: %s to %s"%(np.min(B_sky_array_total),np.max(B_sky_array_total))
     
-    # Signal
+    'total signal detected (accounting for system efficiency)'
+    detsignal = totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel
+    
+    if debugging:
+        print "DEBUGGING: the total object signal [electrons] detected ranges from: %s to %s"%(np.min(detsignal),np.max(detsignal))
+        print "DEBUGGING: an example of the object signal [electrons] is: %s"%detsignal[0]
+
+    def add_skybackground():
+        'Background from stuff in space'
+        'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
+        B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
+        if debugging:
+            print "DEBUGGING: the background in the bandwidth is: %s"%B
+            print "DEBUGGING: the background signal, B_sky [ph/s (in a pixel)], is: %s"%B_sky
+        B_sky_inexptime = B_sky*exptime
+        B_sky_total     = B_sky*exptime*numpixel    
+        B_sky_array = np.zeros((data.shape[0],data.shape[1]))
+        for x in range(data.shape[0]):
+            for y in range(data.shape[1]):
+                B_sky_array[x][y]=np.random.normal(0,np.sqrt(B_sky_total+detsignal[x][y])) 
+    #            B_sky_array[x][y]=np.random.poisson(B_sky_total)
+        B_sky_array_total = B_sky_array
+        if debugging:
+            print "DEBUGGING: the mean total background signal, B_sky_total [electrons], is: %s"%B_sky_total
+            print "DEBUGGING: the total background noisy signal [electrons] ranges from: %s to %s"%(np.min(B_sky_array_total),np.max(B_sky_array_total))
+    
+        return B_sky_total, B_sky_array
+    
+    'Add background to the signal'
+    B_sky_total, B_sky_array = add_skybackground()
     noiseadded_signal = detsignal + B_sky_total + B_sky_array
     
-    ### ReadOutNoise ###
-    numexposures = exptime/3600. # hour long exposures
-    R_squared_array = np.zeros((data.shape[0],data.shape[1]))
-    for x in range(data.shape[0]):
-        for y in range(data.shape[1]):
-            R_squared_array[x][y]=np.mean(np.random.normal(np.sqrt(R_squared),np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   
-    R_squared_total = R_squared * round(numexposures)
-    R_squared_total_array = R_squared_array * round(numexposures)
-    #print "the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s, %s"%(R_squared,numexposures,R_squared_total,R_squared_total_array[0])
-    #print "the total R_squared value [electrons] multiplying by numpix read out is: %s, %s"%((R_squared_total*numpixel),(R_squared_total_array[0]*numpixel))
-    
-    ### DarkCurrent ###
-    noise_from_detector = 0.0
-    #D_total = D*exptime*numpixel
-    #D_array = np.zeros((data.shape[0],data.shape[1]))
-    #for x in range(data.shape[0]):
-    #    for y in range(data.shape[1]):
-    #        D_array[x][y]=np.random.normal(D_total,np.sqrt(D_total)) 
-    #D_array_total = D_array
-    #print "the total dark current [electrons] is: %s , %s"%(D_total, D_array_total[0])
+    def add_readoutnoise():
+        'ReadOut Noise'
+        numexposures = exptime/3600. # hour long exposures
+        R_squared_array = np.zeros((data.shape[0],data.shape[1]))
+        R = np.sqrt(R_squared)
+        for x in range(data.shape[0]):
+            for y in range(data.shape[1]):
+                R_squared_array[x][y]=np.mean(np.random.normal(R,np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   #### WHY IS B_SKY IN HERE ???? ####
+                R_squared_array[x][y]=np.mean(np.random.normal(0,R,int(numpixel)))**2
+        R_squared_total = R_squared * round(numexposures)
+        R_squared_total_array = R_squared_array * round(numexposures)
+        if debugging:
+            print "DEBUGGING: the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s, %s"%(R_squared,numexposures,R_squared_total,R_squared_total_array[0])
+            print "DEBUGGING: the total R_squared value [electrons] multiplying by numpix read out is: %s, %s"%((R_squared_total*numpixel),(R_squared_total_array[0]*numpixel))
+        
+        return R_squared_total_array
 
-    #noise_from_detector = D_array_total + R_squared_total_array*numpixel
-    #print "an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array_total + D_array_total + R_squared_total_array*numpixel)[0]
-    #print "an example total noise (squarerooted) is: %s"%sigma[0]
+    'Add read out noise to the signal:'
+    R_squared_total_array = add_readoutnoise()
+    noise_from_detector = R_squared_total_array*numpixel
+
+    def add_darkcurrent():
+        'DarkCurrent'
+        noise_from_detector = 0.0
+        D_total = D*exptime*numpixel
+        D_array = np.zeros((data.shape[0],data.shape[1]))
+        for x in range(data.shape[0]):
+            for y in range(data.shape[1]):
+                D_array[x][y]=np.random.normal(D_total,np.sqrt(D_total)) 
+        D_array_total = D_array
+        if debugging:
+            print "DEBUGGING: the total dark current [electrons] is: %s , %s"%(D_total, D_array_total[0])
+        return D_array_total
+
+    'Add dark current to the signal:'
+    D_array_total = add_darkcurrent()
+    noise_from_detector = noise_from_detector + D_array_total
     
-    
-    # Now add noise from the detector
+    if debugging:
+        print "DEBUGGING: an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array_total + D_array_total + R_squared_total_array*numpixel)[0]
+        print "DEBUGGING: an example total noise (squarerooted) is: %s"%sigma[0]
     
     noiseadded_signal = noiseadded_signal + noise_from_detector
     

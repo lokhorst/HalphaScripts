@@ -2,16 +2,19 @@
 
 """ Plots a filament from EAGLE simulation (contours overlaid or noise added for mock observation)
 
-Usage: HalphaSBplot_filaments.py [-h] [-s] [-v] [--debug] [-c] [-r RESOLUTION] [-t EXPTIME] [--mockobs]
+Usage: HalphaSBplot_filaments.py [-h] [-s] [-v] [-m] [-g] [--debug] [-c] [-r RESOLUTION] [-t EXPTIME]
 
 Options:
     -h, --help                          Show this screen.
     -v, --verbose                       Show extra information [default: False]  
-    -s, --save                          Save intermediate array products [default: False]
+    -s, --saveloc                       Save intermediate array products [default: False]
     --debug                             Show extra extra information [default: False]  
 
-    -c, --cmos                          Use specs for new cameras in mock observation
-    --mockobs                           Plot a mock observation (rather than just the EAGLE simulation). 
+    -p, --plotchecks                    Plot intermediate checks [default: False]
+
+    -g, --maskgal                       Mask the galaxies before plotting [default: False]
+    -c, --cmos                          Use specs for new cameras in mock observation [default: False] 
+    -m, --mockobs                       Plot a mock observation (rather than just the EAGLE simulation). [default: False] 
     -r RESOLUTION, --res RESOLUTION     The desired resolution of the filament image in arcsec. [default: 500]
     -t EXPTIME, --exptime EXPTIME       The desired exposure time to integrate the filament over in seconds. [default: 10**3*3600.]
 
@@ -24,6 +27,8 @@ npz files obtained from Nastasha Wijers at Leiden Observatory.  Plots filament w
 Adds noise to create mock Dragonfly observations.
 """
 
+import docopt
+import os
 import numpy as np
 import eagle_constants_and_units as c
 import cosmo_utils as csu
@@ -36,135 +41,304 @@ from astropy import units as u
 import get_halpha_SB
 import HalphaSBplot_addnoise
 
-def getBackground(start,end,machine,plot=False):
-    # Returns the total background flux in the wavlength interval supplied i.e. returns (flux)*(wavlength interval) 
-    wavelength = []
-    flux = []
+import eagleSqlTools as sql
+
+pixscale =  {'50Mpc': 0.237/1000.*(1.+0.0115), '100Mpc': 0.477/1000.*(1.+0.0235),'200Mpc': 0.928/1000.*(1.+0.047) , '500Mpc': 2.178/1000.*(1.+0.12)} ### Mpc / arcsec (comoving)
+
+xbox_3 = np.array([53,53,56,56])
+ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)
+xbox_2 = np.array([44.5,44.5,46,46])
+ybox_2 = (np.array([(7.9+6.9)/2.,(8.05+7.05)/2.,7.05,6.9])-0.05+0.2)
+xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)
+ybox_1 = np.array([10.5,14,14,10.5])
     
-    if machine=='chinook':
-        geminiloc='/Users/lokhorst/Documents/Eagle/Gemini_skybackground.dat'
-    elif machine=='coho':
-        geminiloc='/Users/deblokhorst/Documents/Dragonfly/HalphaScripts/Gemini_skybackground.dat'
-    
-    with open(geminiloc,'r') as f:  #wavelength in nm, flux in phot/s/nm/arcsec^2/m^2
-        for line in f:
-            if line[0]!='#' and len(line)>5:
-                tmp = line.split()
-                wavelength.append(tmp[0])
-                flux.append(tmp[1])
+def maskgals2(xgal,ygal,rhgas,data,xystarts,size,distance):
+    xsize = data.shape[0]
+    ysize = data.shape[1]
+    xlen  = size[0]
+    ylen  = size[1]
+
+    data_masked = np.array([[i for i in line] for line in data])
+    for i in range(len(xgal)):
+        xind = (xgal[i]-xystarts[0])*xsize/xlen
+        yind = (ygal[i]-xystarts[1])*ysize/ylen
+        if rhgas[i] > (pixscale[distance]*resolution*1000.):  # if the gas scale length is greater than the pixel size
+            print("rhgas, %s, is greater than %s kpc"%(rhgas[i],round(pixscale[distance]*resolution*1000.)))
+            xind = int(round(xind))
+            yind = int(round(yind))
+            if xind+2<data.shape[0] and yind+2<data.shape[1]:
+                data_sub = np.mean([data[xind+2,yind+2],data[xind-2,yind-2],data[xind-2,yind+2],data[xind+2,yind-2]])
+            elif xind+2<data.shape[0]:
+                data_sub = np.mean([data[xind-2,yind-2],data[xind-2,yind],data[xind+2,yind-2]])
+            elif yind+2<data.shape[0]:
+                data_sub = np.mean([data[xind-2,yind-2],data[xind-2,yind+2],data[xind,yind-2]])
+            # data_sub = -3
+            data_masked[xind,yind]=data_sub
+            # mask the pixels around the central pixel
+            data_masked[xind+1,yind]=data_sub
+            data_masked[xind-1,yind]=data_sub
+            data_masked[xind,yind+1]=data_sub
+            data_masked[xind,yind-1]=data_sub
+            data_masked[xind+1,yind+1]=data_sub
+            data_masked[xind-1,yind-1]=data_sub
+            data_masked[xind+1,yind-1]=data_sub
+            data_masked[xind-1,yind+1]=data_sub
+        else:
+            xind = int(round(xind))
+            yind = int(round(yind))
+           # print(xind,yind)
+            
+            # move it out of the corner if it is in the corner
+            if yind > data.shape[1]-2:
+                yind = data.shape[1]-2
+                #print('the new yind is %s'%yind)
+            if xind > data.shape[0]-2:
+                xind = data.shape[0]-2
+                #print('the new xind is %s'%xind)
+            if yind<1:
+                yind=1
+                #print('the new yind is %s'%yind)
+            if xind<1:
+                xind=1
+                #print('the new xind is %s'%xind)
                 
-    wavelength = np.array(wavelength,'d')
-    flux = np.array(flux,'d')
+            # now check for the highest number around
+            start=-100; maxx=0; maxy=0; tomedian=[]
+            for x in [xind-1,xind,xind+1]:
+                for y in [yind-1,yind,yind+1]:
+                    if data_masked[x,y]>start:
+                        start = data_masked[x,y]
+                        maxx=x
+                        maxy=y
+                    tomedian.append(data_masked[x,y])
+                    
+            data_sub = np.median(tomedian)
+            data_masked[maxx,maxy]=data_sub
+            print('masked %s, %s'%(maxx,maxy))
+            
+    return data_masked
     
-    start_ind = (np.abs(wavelength-start)).argmin()
-    end_ind   = (np.abs(wavelength-end)).argmin()
-    
-    # if spacings are not even, need to add element by element
-    total=0
-    for index in np.arange(start_ind,end_ind):
-      #  print index,index+1
-      #  print total
-        total = total+(flux[index]*(wavelength[index+1]-wavelength[index]))
+def plotgals(xgal,ygal,rhgas,rhstar,ax1):
+    for i in range(len(xgal)):
+        circle1 = plt.Circle((xgal[i],ygal[i]), radius=rhgas[i]/1000., color='red',fill=False)
+        ax1.add_artist(circle1)
+        circle1 = plt.Circle((xgal[i],ygal[i]), radius=rhstar[i]/1000., color='blue',fill=False)
+        ax1.add_artist(circle1)
+        if verbose:
+            print('%s and %s and the radius of stars is %s '%(xgal[i],ygal[i],rhstar[i]))
         
-    # if spacings are even, can just take the average of the flux array and times it by the total bandwidth
-    np.mean(flux[start_ind:end_ind])*(wavelength[end_ind]-wavelength[start_ind])
-    
-   # print('start index and end index: %s and %s'%(start_ind,end_ind))
-   # print(wavelength[start_ind:end_ind]-wavelength[start_ind+1:end_ind+1])
-    if plot==True:
-        plt.plot(wavelength[start_ind-100:end_ind+100],flux[start_ind-100:end_ind+100])
-        top = max(flux[start_ind-100:end_ind+100])
-        plt.plot([start,start,end,end,start],[0,top,top,0,0])
-        plt.show()
+def getgalaxies_inFOV(distance):
+
+    xmin = x_center-x_FOV[distance]/2.
+    ymin = y_center-y_FOV[distance]/2.
+    xmax = x_center+x_FOV[distance]/2.
+    ymax = y_center+y_FOV[distance]/2.
+    print xmin,xmax,ymin,ymax
         
-    return total
+    zmin = 10.; zmax = 15.  # using the mid z 12.5 sims
+    
+    return searchgals(xmin,xmax,ymin,ymax,zmin,zmax)
     
     
-def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
-    # Dragonfly info
-    area_lens = np.pi*(14.3/2)**2 * 48. *10.                # cm^2, 48 * 14.3 cm diameter lenses
-    pix_size = 2.8                                      # arcsec
-    ang_size_pixel  = (pix_size * (1./206265.))**2      # rad^2, the pixel size of the CCD
-    tau_l = 0.85                                        # transmittance of the Dragonfly lens
-    tau_f = 1.                                          # transmittance of the Halpha filter -- assumed for now
-    #B = getBackground(656.3,657.3,machine)              # *u.photon/u.second/u.arcsec**2/u.m**2  ****already multiplied by the bandwidth***
-    B = 0.560633
-    D = 0.04       # dark current (electrons / s) 
+def getgalaxies_filament(number=1):
+
+    if number==1:
+        xmin = 46.2; xmax = 48.1; ymin = 10.5; ymax = 14.
+    elif number==2:
+        xmin = 44.5; xmax = 46.0; ymin = 6.9; ymax = 8.2
+    elif number==3:
+        xmin = 53.; xmax = 56.; ymin = 7.5; ymax = 10.  
     
-    if CMOS:
-   #     print "Using new CMOS cameras..."
-        QE = 0.70                                       # quantum efficiency of the CMOS detector
-        R_squared = 2.**2                               # read noise (electrons)
+    zmin = 10.; zmax = 15.  # using the mid z 12.5 sims
+    
+    return searchgals(xmin,xmax,ymin,ymax,zmin,zmax)
+    
+def searchgals(xmin,xmax,ymin,ymax,zmin,zmax,strict=False):
+    
+    mySim = ('RefL0100N1504',100.)
+    con   = sql.connect("dlokhorst",password="mxdPB54Y")  
+
+    myQuery  = "SELECT "+"SH.GalaxyID, \
+                SH.StarFormationRate as SFR, \
+                SH.CentreOfPotential_x, \
+                SH.CentreOfPotential_y, \
+                SH.CentreOfPotential_z, \
+                SH.SubGroupNumber, \
+                SH.MassType_Star, \
+                SH.HalfMassProjRad_Gas, \
+                SH.HalfMassProjRad_Star \
+            FROM \
+                %s_SubHalo as SH \
+            WHERE \
+                SH.SnapNum = 28 and \
+                SH.CentreOfPotential_x >= %s and \
+                SH.CentreOfPotential_x <= %s and \
+                SH.CentreOfPotential_y >= %s and \
+                SH.CentreOfPotential_y <= %s and \
+                SH.CentreOfPotential_z >= %s and \
+                SH.CentreOfPotential_z <= %s and \
+                SH.MassType_Star > 0 "%('RefL0100N1504',xmin,xmax,ymin,ymax,zmin,zmax)
+ 
+    if strict:
+        myQuery  = "SELECT "+"SH.GalaxyID, \
+                    SH.StarFormationRate as SFR, \
+                    SH.CentreOfPotential_x, \
+                    SH.CentreOfPotential_y, \
+                    SH.CentreOfPotential_z, \
+                    SH.SubGroupNumber, \
+                    SH.MassType_Star, \
+                    SH.HalfMassProjRad_Gas, \
+                    SH.HalfMassProjRad_Star \
+                FROM \
+                    %s_SubHalo as SH \
+                WHERE \
+                    SH.SnapNum = 28 and \
+                    SH.CentreOfPotential_x >= %s and \
+                    SH.CentreOfPotential_x <= %s and \
+                    SH.CentreOfPotential_y >= %s and \
+                    SH.CentreOfPotential_y <= %s and \
+                    SH.CentreOfPotential_z >= %s and \
+                    SH.CentreOfPotential_z <= %s and \
+                    SH.MassType_Star > 0 and \
+                    SH.StarFormationRate > 0.00001 "%('RefL0100N1504',xmin,xmax,ymin,ymax,zmin,zmax)
+        
+                #  and \
+              #  SH.StarFormationRate > 0.00001 
+
+    if verbose:
+        print myQuery
+    
+    myData = sql.execute_query(con,myQuery)
+
+    xgal = myData['CentreOfPotential_x'][:]   # cMpc
+    ygal = myData['CentreOfPotential_y'][:]   # cMpc
+    #z = myData['CentreOfMass_z'][:]
+    mgal = myData['MassType_Star'][:]         # M_solar
+    rhgas = myData['HalfMassProjRad_Gas'][:]  # pkpc
+    rhstar= myData['HalfMassProjRad_Star'][:] # pkpc
+    
+    return xgal,ygal,mgal,rhgas,rhstar
+    
+def loaddata():
+    sl = [slice(None,None,None), slice(None,None,None)]
+    if machine=='chinook':
+        homedir='/Users/lokhorst/Eagle/'
+    elif machine=='coho':
+        homedir='/Users/deblokhorst/eagle/SlicesFromNastasha/'
+
+    # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
+    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
+                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
+
+    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
+                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
+                 
+    # Load a 5Mpc slice of data
+    print('data1 ('+files_noSF_28[0]+')...')
+    data1 = (np.load(files_noSF_28[0])['arr_0'])[sl]
+    data1 = get_halpha_SB.imreduce(data1, round(factor), log=True, method = 'average')
+    print('data11 ('+files_SF_28[0]+')...')
+    data11 = (np.load(files_SF_28[0])['arr_0'])[sl]
+    data11 = get_halpha_SB.imreduce(data11, round(factor), log=True, method = 'average')
+    print('5 Mpc slice...')
+    data_5 = np.log10(10**data1+10**data11)
+    print('delete data1, data11...')
+    del data1
+    del data11
+    
+    return data_5
+
+def changeres(distance,resolution,data):
+    pixscale =  {'50Mpc': 0.237/1000.*(1.+0.0115), '100Mpc': 0.477/1000.*(1.+0.0235),'200Mpc': 0.928/1000.*(1.+0.047) , '500Mpc': 2.178/1000.*(1.+0.12)} ### Mpc / arcsec (comoving)
+    simpixsize = 100./32000. ### Mpc / pixel is resolution of raw data 
+    factor = round(pixscale[distance]*resolution/simpixsize)
+    size = 32000.
+    print("Will reduce resolution by a factor of %s."%factor)
+    # LATER determine the current resolution of the data. FOR NOW assume current resolution is 100 Mpc/ 32000 pixels ~ 3 kpc/pixel
+
+    # If the factors are not integer multiples of 32000., I'll trim the data first and then imreduce it
+    if 32000.%((factor)) != 0.:
+        times_factor_fits_in = int(32000./factor)
+        newsize = times_factor_fits_in * factor
+        print("Before reducing resolution, the original data was trimmed to size %s."%newsize)
+        datanew = data[0:int(newsize),0:int(newsize)]
     else:
-   #     print "Using old cameras..."
-        QE = 0.48                                       # quantum efficiency of the CCDs
-        R_squared = 10.**2                              # read noise (electrons)
-    
-   # R_squared = 50.**2
-    
-    binpix_size = resolution # arcsec
-    numpixel = round((binpix_size/pix_size)**2)
-    #print "the number of pixels is %s"%numpixel
-    
-    
-    ### total signal incident in exposure time ###
-    totsignal = 10**data * exptime # ( photons / cm^2 /sr )
-    ### total signal detected (accounting for system efficiency) ###
-    detsignal = totsignal * QE * tau_l * tau_f * area_lens * ang_size_pixel * numpixel
-    #print "the total object signal [electrons] detected ranges from: %s to %s"%(np.min(detsignal),np.max(detsignal))
-    #print "an example of the object signal [electrons] is: %s"%detsignal[0]
+        datanew = data
+        newsize = size
 
+    return get_halpha_SB.imreduce(datanew, round(factor), log=True, method = 'average'), newsize, factor
 
-    ### Background from stuff in space ###
-    'background sky signal detected [B]=ph/s/arcsec^2/m^2, [B_sky]=ph/s (in a pixel)'
-    B_sky = B * QE * tau_l * tau_f * area_lens*(1/100.)**2 * pix_size**2
-    #print "the background in the bandwidth is: %s"%B
-    #print "the background signal, B_sky [ph/s (in a pixel)], is: %s"%B_sky
-    B_sky_inexptime = B_sky*exptime
-    B_sky_total     = B_sky*exptime*numpixel    
-    B_sky_array = np.zeros((data.shape[0],data.shape[1]))
-    for x in range(data.shape[0]):
-        for y in range(data.shape[1]):
-            B_sky_array[x][y]=np.random.normal(0,np.sqrt(B_sky_total+detsignal[x][y])) 
-#            B_sky_array[x][y]=np.random.poisson(B_sky_total)
-    B_sky_array_total = B_sky_array
-    #print "the mean total background signal, B_sky_total [electrons], is: %s"%B_sky_total
-    #print "the total background noisy signal [electrons] ranges from: %s to %s"%(np.min(B_sky_array_total),np.max(B_sky_array_total))
+def define_filament_boxes(data,size=100.):
+    # size in Mpc = total box size of data
+    pixlength = float(data.shape[0])
     
-    # Signal
-    noiseadded_signal = detsignal + B_sky_total + B_sky_array
+    # Define boxes around the filaments (snapnum 28)
+    xbox_3 = np.array([53,53,56,56])*pixlength/size
+    ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)*pixlength/size
+    xbox_2 = np.array([44.5,44.5,46,46])*pixlength/size
+    #    xbox_2 = np.array([43,43,46,46])*pixlength/size
+    ybox_2 = (np.array([(7.9+6.9)/2.,(8.05+7.05)/2.,7.05,6.9])-0.05+0.2)*pixlength/size
+    #    ybox_2 = (np.array([7.9,8.05,7.05,6.9])-0.05+0.2)*pixlength/size
+    ##    ybox_2 = (np.array([7.8,8.1,7.1,6.8])-0.05+0.2)*pixlength/size
+    xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*pixlength/size
+    ybox_1 = np.array([10.5,14,14,10.5])*pixlength/size
+    xboxes = {'1':xbox_1,'2':xbox_2,'3':xbox_3}
+    yboxes = {'1':ybox_1,'2':ybox_2,'3':ybox_3}
     
-    ### ReadOutNoise ###
-    numexposures = exptime/3600. # hour long exposures
-    R_squared_array = np.zeros((data.shape[0],data.shape[1]))
-    for x in range(data.shape[0]):
-        for y in range(data.shape[1]):
-            R_squared_array[x][y]=np.mean(np.random.normal(np.sqrt(R_squared),np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   
-    R_squared_total = R_squared * round(numexposures)
-    R_squared_total_array = R_squared_array * round(numexposures)
-    #print "the R_squared value is: %s, so in %s exposures [per pixel], will have R_squared of: %s, %s"%(R_squared,numexposures,R_squared_total,R_squared_total_array[0])
-    #print "the total R_squared value [electrons] multiplying by numpix read out is: %s, %s"%((R_squared_total*numpixel),(R_squared_total_array[0]*numpixel))
-    
-    ### DarkCurrent ###
-    noise_from_detector = 0.0
-    #D_total = D*exptime*numpixel
-    #D_array = np.zeros((data.shape[0],data.shape[1]))
-    #for x in range(data.shape[0]):
-    #    for y in range(data.shape[1]):
-    #        D_array[x][y]=np.random.normal(D_total,np.sqrt(D_total)) 
-    #D_array_total = D_array
-    #print "the total dark current [electrons] is: %s , %s"%(D_total, D_array_total[0])
+    return xboxes, yboxes
 
-    #noise_from_detector = D_array_total + R_squared_total_array*numpixel
-    #print "an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array_total + D_array_total + R_squared_total_array*numpixel)[0]
-    #print "an example total noise (squarerooted) is: %s"%sigma[0]
+def extractdata(xfull,yfull,data):
+    SBdata = np.zeros(xfull.shape)
+    for i in range(yfull.shape[0]):
+        for j in range(yfull.shape[1]):
+                SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
+    return SBdata
+
+def getSBatfilament(data,resolution,distance):
+### DOESN'T WORK YET ###
+    datares, newsize, factor = changeres(distance,resolution,data) # change data to required resolution at selected distance
+    xboxes, yboxes = define_filament_boxes(datares)
+    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+    SBdata = extractdata(xfull,yfull,datares)
+    return SBdata
+
+#----------------------------------------------- PLOTTING FUNCTIONS  ---------------------------------------------------------#
+
+def plotfilamentboxes(ax1,snapnum=28):
+    if snapnum == 27:
+        # Pick out regions along the filaments in the map (snapnum 27)
+        ax1.plot([53,53,56,56,53],[9.2,10,8.5,7.7,9.2],color='r', label='Region 3')
+        ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2]),[14,14,10,10,14],color='r', label='Region 1')
+        ax1.plot(np.array([43,43,46,46,43]),[7.5,8.2,7.2,6.5,7.5],color='r', label = 'Region 2')
     
+        xbox_3 = np.array([53,53,56,56])*3200./100.
+        ybox_3 = np.array([9.2,10,8.5,7.7])*3200./100.
+
+        xbox_2 = np.array([43,43,46,46])*3200./100.
+        ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05)*3200./100.
+
+        xbox_1 = np.array([47.4,46.2,46.9,48.1])*3200./100.
+        ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
     
-    # Now add noise from the detector
+    if snapnum == 28:
+        # Pick out regions along the filaments in the map (snapnum 28)
+
+        ax1.plot([53,53,56,56,53],np.array([9.2,10,8.5,7.7,9.2])-0.2,color='r', label='Region 3')
+        ax1.plot(np.array([46.2,47.2,48.2,47.2,46.2])+0.5,[14,14,10,10,14],color='r', label='Region 1')
+        ax1.plot(np.array([43,43,46,46,43]),np.array([7.5,8.2,7.2,6.5,7.5])+0.2,color='r', label = 'Region 2')
     
-    noiseadded_signal = noiseadded_signal + noise_from_detector
-    
-    return noiseadded_signal
+        xbox_3 = np.array([53,53,56,56])*3200./100.
+        ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)*3200./100.
+
+        xbox_2 = np.array([43,43,46,46])*3200./100.
+        ybox_2 = (np.array([7.8,8.,7.1,6.8])-0.05+0.2)*3200./100.
+
+        xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*3200./100.
+        ybox_1 = np.array([10.5,14,14,10.5])*3200./100.
 
 def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,colorbar=False,mockobs=False,labelaxes=False,label=''):
     # setting up the plot
@@ -245,93 +419,95 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,colo
     plt.tight_layout()
 
 
-def loaddata():
-    sl = [slice(None,None,None), slice(None,None,None)]
-    if machine=='chinook':
-        homedir='/Users/lokhorst/Eagle/'
-    elif machine=='coho':
-        homedir='/Users/deblokhorst/eagle/SlicesFromNastasha/'
-
-    # Simulation snapnum 28 (z = 0), xy box size: 100Mpc, z slice width: 5Mpc,
-    files_SF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5__fromSFR.npz',
-                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5__fromSFR.npz',
-                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5__fromSFR.npz',
-                   homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5__fromSFR.npz']
-
-    files_noSF_28 = [homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_noSFR.npz',
-                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen17.5_noSFR.npz',
-                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen2.5_noSFR.npz',
-                     homedir+'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen7.5_noSFR.npz']
-                 
-    # Load a 5Mpc slice of data
-    print('data1 ('+files_noSF_28[0]+')...')
-    data1 = (np.load(files_noSF_28[0])['arr_0'])[sl]
-    data1 = get_halpha_SB.imreduce(data1, round(factor), log=True, method = 'average')
-    print('data11 ('+files_SF_28[0]+')...')
-    data11 = (np.load(files_SF_28[0])['arr_0'])[sl]
-    data11 = get_halpha_SB.imreduce(data11, round(factor), log=True, method = 'average')
-    print('5 Mpc slice...')
-    data_5 = np.log10(10**data1+10**data11)
-    print('delete data1, data11...')
-    del data1
-    del data11
+def plotit(exptime, ax1, mymap='gist_gray', res=500, label=''):
     
-    return data_5
+    addnoisesqrt = False
 
-def changeres(distance,resolution,data):
-    pixscale =  {'50Mpc': 0.237/1000.*(1.+0.0115), '100Mpc': 0.477/1000.*(1.+0.0235),'200Mpc': 0.928/1000.*(1.+0.047) , '500Mpc': 2.178/1000.*(1.+0.12)} ### Mpc / arcsec (comoving)
-    simpixsize = 100./32000. ### Mpc / pixel is resolution of raw data 
-    factor = round(pixscale[distance]*resolution/simpixsize)
-    size = 32000.
-    # LATER determine the current resolution of the data. FOR NOW assume current resolution is 100 Mpc/ 32000 pixels ~ 3 kpc/pixel
+    #  Add the noise to the EAGLE SB data
+    try:
+        if res>99 and res<101:
+            resolution = 100. #arcsec
+            SBdata = np.load('SBdata_100arcsec.npz')['arr_0']
+        elif res>499 and res < 501:
+            resolution = 500. #arcsec
+            SBdata = np.load('SBdata_500arcsec.npz')['arr_0']   
+        elif res>999 and res < 1001:
+            resolution = 1000. #arcsec
+            SBdata = np.load('SBdata_1000arcsec.npz')['arr_0']
+        else:
+            print "Unsupported resolution"
+    except:
+        print "Unsupported resolution"
+        
+    SBdata_exp0 = HalphaSBplot_addnoise.addnoise(SBdata,resolution,exptime=exptime,CMOS=True)
 
-    # If the factors are not integer multiples of 32000., I'll trim the data first and then imreduce it
-    if 32000.%((factor)) != 0.:
-        times_factor_fits_in = int(32000./factor)
-        newsize = times_factor_fits_in * factor
-        print("Before reducing resolution, the original data was trimmed to size %s."%newsize)
-        datanew = data[0:int(newsize),0:int(newsize)]
-    else:
-        datanew = data
-        newsize = size
+    # Plot the subtracted noiseadded data
+    #fig = plt.figure(figsize = (9.5, 5.))
+    #ax1 = plt.subplot(111)
 
-    return get_halpha_SB.imreduce(datanew, round(factor), log=True, method = 'average'), newsize, factor
+    # Plot the data nicely
+    median = np.median(SBdata_exp0);
+    sig = np.sqrt(median)
 
-def defineboxes(data,size=100.):
-    # size in Mpc = total box size of data
-    pixlength = float(data.shape[0])
+    mymax = median + 40*sig
+    mymin = median - 5*sig
+
+    SBdata_clipped = SBdata_exp0
+    SBdata_clipped[SBdata_clipped < mymin] = mymin
+    SBdata_clipped[SBdata_clipped > mymax] = mymax
+    SBdata_clipped = SBdata_clipped - mymin
+
+    get_halpha_SB.makemapfilament(np.log10(SBdata_clipped**0.5),ax1,contours=False,mockobs=True,colmap=mymap,label=label,labelaxes=True)
+
+def plotit_filament(SBdata,exptime, ax1, mymap='gist_gray', label=''):
     
-    # Define boxes around the filaments (snapnum 28)
-    xbox_3 = np.array([53,53,56,56])*pixlength/size
-    ybox_3 = (np.array([9.2,10,8.5,7.7])-0.2)*pixlength/size
-    xbox_2 = np.array([44.5,44.5,46,46])*pixlength/size
-    #    xbox_2 = np.array([43,43,46,46])*pixlength/size
-    ybox_2 = (np.array([(7.9+6.9)/2.,(8.05+7.05)/2.,7.05,6.9])-0.05+0.2)*pixlength/size
-    #    ybox_2 = (np.array([7.9,8.05,7.05,6.9])-0.05+0.2)*pixlength/size
-    ##    ybox_2 = (np.array([7.8,8.1,7.1,6.8])-0.05+0.2)*pixlength/size
-    xbox_1 = (np.array([47.4,46.2,46.9,48.1])+0.5)*pixlength/size
-    ybox_1 = np.array([10.5,14,14,10.5])*pixlength/size
-    xboxes = {'1':xbox_1,'2':xbox_2,'3':xbox_3}
-    yboxes = {'1':ybox_1,'2':ybox_2,'3':ybox_3}
+    addnoisesqrt = False
+        
+    SBdata_exp0 = HalphaSBplot_addnoise.addnoise(SBdata,resolution,exptime=exptime,CMOS=True)
+
+    # Plot the subtracted noiseadded data
+    #fig = plt.figure(figsize = (9.5, 5.))
+    #ax1 = plt.subplot(111)
+
+    # Plot the data nicely
+    median = np.median(SBdata_exp0);
+    sig = np.sqrt(median)
+
+    mymax = median + 40*sig
+    mymin = median - 5*sig
+
+    SBdata_clipped = SBdata_exp0
+    SBdata_clipped[SBdata_clipped < mymin] = mymin
+    SBdata_clipped[SBdata_clipped > mymax] = mymax
+    SBdata_clipped = SBdata_clipped - mymin
+
+    get_halpha_SB.makemapfilament(np.log10(SBdata_clipped**0.5),ax1,contours=False,mockobs=True,colmap=mymap,label=label,labelaxes=True)
+
+
+def plotit_general(data, size, xystarts, ax1, exptime, mymap='gist_gray', res=100, label=''):
     
-    return xboxes, yboxes
+    data_obs = HalphaSBplot_addnoise.addnoise(data,resolution,exptime=exptime,CMOS=True)
+    
+    # Plot the subtracted noiseadded data
+    #fig = plt.figure(figsize = (9.5, 5.))
+    #ax1 = plt.subplot(111)
+    
+    # Plot the data nicely
+    median = np.median(data_obs);
+    sig = np.sqrt(median)
+    
+    mymax = median + 40*sig
+    mymin = median - 5*sig
+    
+    SBdata_clipped = data_obs
+    SBdata_clipped[SBdata_clipped < mymin] = mymin
+    SBdata_clipped[SBdata_clipped > mymax] = mymax
+    SBdata_clipped = SBdata_clipped - mymin
 
-def extractdata(xfull,yfull,data):
-    SBdata = np.zeros(xfull.shape)
-    for i in range(yfull.shape[0]):
-        for j in range(yfull.shape[1]):
-                SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
-    return SBdata
+    get_halpha_SB.makemap(np.log10(SBdata_clipped**0.5),size,ax1,xystarts=xystarts,colmap=mymap,label=label,colorbar=False)
 
-def getSBatfilament(data,resolution,distance):
-### DOESN'T WORK YET ###
-    datares, newsize, factor = changeres(distance,resolution,data) # change data to required resolution at selected distance
-    xboxes, yboxes = defineboxes(datares)
-    xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
-    SBdata = extractdata(xfull,yfull,datares)
-    return SBdata
 
-#-------------------------------------- BODY OF PROGRAM STARTS HERE ---------------------------------------------#
+#------------------------------------------- BODY OF PROGRAM STARTS HERE ---------------------------------------------#
 
 if __name__ == "__main__":
     
@@ -341,10 +517,14 @@ if __name__ == "__main__":
     debugging       = arguments['--debug']
     saveloc         = arguments['--saveloc']
 
+    plotchecks      = arguments['--plotchecks']
+    
     resolution      = arguments['--res']
     exptime         = arguments['--exptime']
     mockobs         = arguments['--mockobs']
     cmos            = arguments['--cmos']
+    
+    maskgal         = arguments['--maskgal']
     
     if verbose:
         print arguments
@@ -352,14 +532,173 @@ if __name__ == "__main__":
     distance = '50Mpc'  ### '50Mpc' '100Mpc' '200Mpc' '500Mpc'
     boxnum = '1' ### which filament (there are 3)
     factor = 1
-    machine='chinook'
+    machine='coho'
 
-    # load a slice of data
-    data_5 = loaddata() # load in data at full resolution
+    def plotforpaper():
+        #label = 'Warm/Hot gas filament in the cosmic web from the EAGLE simulation'
+        #map='bone'
+        #plotit(float(exptime), map, float(resolution), label = label)
+        #plt.show()
+        
+        
+        ##### figure with full resolution EAGLE SB in filament in first plot, then mock observations at different resolutions following #####
+        fig,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,figsize = (8.5, 7.))
+        hour = 3600; map = 'viridis'; label = 'Warm/Hot gas filament in the cosmic web from the EAGLE simulation'
+        SBdata = np.load('SBdata_full.npz')['arr_0']
+        get_halpha_SB.makemapfilament(SBdata,ax1,colmap=map,labelaxes=True)#,label=label)
+        map = 'bone'; label = '100" resolution'
+        exptime = 10**3 * 3600
+        plotit(exptime,ax2, map, 100)
+        #ax2.locator_params(axis='y', nticks=3)
+        ax2.set_xticklabels([])
+        ax2.set_xlabel('')
+        #ax2.set_xticks([])
+        label = '500" resolution'
+        plotit(exptime,ax3, map, 500)
+        ax3.set_xticklabels([])
+        ax3.set_xlabel('')
+        #ax3.set_xticks([])
+        label = '1000" resolution'
+        plotit(exptime,ax4, map, 1000)
+        ax4.set_xticklabels([])
+        ax4.set_xlabel('')
+        #ax4.set_xticks([])
+        #plt.tight_layout()
+        plt.subplots_adjust( hspace=0.2)
+    
+    plotforpaper()    
+    plt.show()
 
+    def maskgalaxies_infilament(resolution,distance):
+        # load the full 100Mpc x 100Mpc box size data first
+        data_tuple = (np.load('data_%s_%sarcsec.npz'%(distance,resolution))['arr_0'])
+        factor = data_tuple[2]; newsize = data_tuple[1]; data = data_tuple[0];
+        
+        # select out a region around the filament 1
+        xmin = np.min(xbox_1)-1. ; xmax = np.max(xbox_1)+1. ; 
+        ymin = np.min(ybox_1)-1. ; ymax = np.max(ybox_1)+1.
+        xystarts = [xmin-pixscale[distance]*resolution/2.,ymin-pixscale[distance]*resolution/2.]  ### 
+        size     = [xmax-xmin,ymax-ymin]
+        data_aroundfilament1 = data[(xmin/100.*(newsize/factor)):(xmax/100.*(newsize/factor)),(ymin/100.*(newsize/factor)):(ymax/100.*(newsize/factor))]
+        
+        if plotchecks:
+            fig = plt.figure(figsize=[5,5])
+            axis = plt.subplot(111)
+            get_halpha_SB.makemap(data_aroundfilament1,size,axis,xystarts = xystarts)
+            plt.show()
+        
+        # load the galaxy catalogue
+        zmin = 10.; zmax = 15.
+        xgal,ygal,mgal,rhgas,rhstar = searchgals(xmin,xmax,ymin,ymax,zmin,zmax)
+        
+        if plotchecks:
+            fig = plt.figure(figsize=[5,5])
+            axis = plt.subplot(111)
+            get_halpha_SB.makemap(data_aroundfilament1,size,axis,xystarts = xystarts)
+            plotgals(xgal,ygal,rhgas,rhstar,axis)
+            plt.show()
+            
+        # mask the galaxies in the EAGLE data
+        data_masked = maskgals2(xgal,ygal,rhgas,data,[0,0],[100.,100.],distance)  # using the full 100Mpcx100Mpc data for the next steps
+        
+        if plotchecks:
+            fig = plt.figure(figsize=[5,10])
+            axis = plt.subplot(121)
+            get_halpha_SB.makemap(data_masked[(xmin/100.*(newsize/factor)):(xmax/100.*(newsize/factor)),(ymin/100.*(newsize/factor)):(ymax/100.*(newsize/factor))],
+                                    size,axis,xystarts = xystarts)
+            plotgals(xgal,ygal,rhgas,rhstar,axis)
+            
+            axis2 = plt.subplot(122)
+            get_halpha_SB.makemap(data[(xmin/100.*(newsize/factor)):(xmax/100.*(newsize/factor)),(ymin/100.*(newsize/factor)):(ymax/100.*(newsize/factor))],
+                                    size,axis2,xystarts = xystarts)
+            plotgals(xgal,ygal,rhgas,rhstar,axis2)
+            plt.show()
+        
+        # select out the filament region
+        xboxes, yboxes = define_filament_boxes(data_masked)
+        xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
+        SBdata = extractdata(xfull,yfull,data_masked)
+        
+        if plotchecks:
+            SBdata_notmasked = np.load('SBdata_%sarcsec.npz'%resolution)['arr_0']
+            fig,(ax1,ax2) = plt.subplots(2,1,figsize = (8.5, 7.))
+            map='viridis'
+            get_halpha_SB.makemapfilament(SBdata_notmasked,ax1,colmap=map,labelaxes=True)
+            get_halpha_SB.makemapfilament(SBdata,ax2,colmap=map,labelaxes=True)
+            plt.show()
+        
+        np.savez('SBdata_%sarcsec_%s_masked.npz'%(resolution,distance))
+        
+        return SBdata
+    
+    
+    def loadmaskeddata(resolution,distance):    
+        # load the data if it exists or else make it and save it for later
+        SB_fname = 'SBdata_%sarcsec_%s_masked.npz'%(resolution,distance)
+        if os.path.isfile(SB_fname):
+            print("data tuple exists, loading %s now..."%fname)
+            SBdata = (np.load(SB_fname)['arr_0'])
+        else:
+            data_fname = 'data_%s_%sarcsec.npz'%(distance,resolution)
+            print("data not saved, loading %s to make it now..."%data_fname)
+            if os.path.isfile(data_fname):
+                print("%s is saved, using it now to make SBdata..."%data_fname)
+                SBdata = maskgalaxies_infilament(resolution,distance)
+            else:
+                print("data_%s_%sarcsec.npz does not exist, need to make that first..."%(distance,resolution))
+                print("loading from total res, 5Mpc slice, file now...")
+                total_fname = 'emission_halpha_L0100N1504_28_test2_SmAb_C2Sm_32000pix_5.000000slice_zcen12.5_total.npz'
+                if os.path.isfile(total_fname):
+                    print("data exists, loading %s now..."%total_fname)
+                    sl = [slice(None,None,None), slice(None,None,None)]
+                    data = (np.load(total_fname)['arr_0'])[sl]
+                else:
+                    print("data not saved, loading from original files now...")
+                    data = loaddata()
+                    np.savez(total_fname,data)
+                
+                data_tuple = changeres(distance,resolution,data)
+                np.savez(data_fname,data_tuple)
+                
+                SBdata = maskgalaxies_infilament(resolution,distance)
+        
+        return SBdata
+    
+    if maskgal:
+        
+        ## Masking after the binning has been done
+        
+        plotchecks=False
+        verbose=False
+        
+        resolution = 100; distance = '50Mpc'
+        # load the data
+        SBdata_100 = maskgalaxies_infilament(resolution,distance)
+        # plot the data
+        fig,(ax1,ax2,ax3) = plt.subplots(3,1,figsize = (8.5, 7.))
+        map = 'bone'; label = '100" resolution'; exptime = 10**4 * 3600
+        plotit_filament(SBdata_100,exptime, ax1, mymap='gist_gray', label='')
+        
+        resolution = 500; distance = '50Mpc'
+        # load the data if it exists or else make it and save it for later
+        SBdata_500 = maskgalaxies_infilament(resolution,distance)
+        # plot the data, now masked
+        plotit_filament(SBdata_500,exptime, ax2, mymap='gist_gray', label='')
+        
+        resolution = 1000; distance = '50Mpc'
+        # load the data if it exists or else make it and save it for later
+        SBdata_1000 = maskgalaxies_infilament(resolution,distance)
+        
+        # plot the data, now masked
+        plotit_filament(SBdata_1000,exptime, ax3, mymap='gist_gray', label='')
+        plt.show()
 
-
-    if mockobs:
+        
+    testplot=False
+    if testplot:
+        # load a slice of data
+        data_5 = loaddata() # load in data at full resolution
+        
         SBdata = getSBatfilament(data_5,resolution,distance)
         if saveloc:
             np.savez(saveloc+'/SBdata_%sarcsec_res.npz',SBdata)
@@ -406,7 +745,7 @@ if __name__ == "__main__":
     resolution = 500. ### arcsec
     data_50Mpc_500arcsec, newsize, factor = changeres(distance,resolution,data_5) # change data to required resolution at selected distance
     
-    xboxes, yboxes = defineboxes(data_50Mpc_500arcsec)
+    xboxes, yboxes = define_filament_boxes(data_50Mpc_500arcsec)
     xfull, yfull= get_halpha_SB.indices_region(xboxes[boxnum].astype(int),yboxes[boxnum].astype(int)) 
     SBdata_50Mpc_500arcsec = extractdata(xfull,yfull,data_50Mpc_500arcsec)
     SBdata_50Mpc_500arcsec_withnoise = addnoise(SBdata_50Mpc_500arcsec,resolution,exptime=10**4*3600.,CMOS=True)

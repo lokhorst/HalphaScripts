@@ -282,6 +282,49 @@ def extractdata(xfull,yfull,data):
                 SBdata[i,j]  = data[xfull[i,j],yfull[i,j]]
     return SBdata
 
+def getBackground(start,end,machine,plot=False):
+    # Returns the total background flux in the wavlength interval supplied i.e. returns (flux)*(wavlength interval) 
+    wavelength = []
+    flux = []
+    
+    if machine=='chinook':
+        geminiloc='/Users/lokhorst/Documents/Eagle/Gemini_skybackground.dat'
+    elif machine=='coho':
+        geminiloc='/Users/deblokhorst/Documents/Dragonfly/HalphaScripts/Gemini_skybackground.dat'
+    
+    with open(geminiloc,'r') as f:  #wavelength in nm, flux in phot/s/nm/arcsec^2/m^2
+        for line in f:
+            if line[0]!='#' and len(line)>5:
+                tmp = line.split()
+                wavelength.append(tmp[0])
+                flux.append(tmp[1])
+                
+    wavelength = np.array(wavelength,'d')
+    flux = np.array(flux,'d')
+    
+    start_ind = (np.abs(wavelength-start)).argmin()
+    end_ind   = (np.abs(wavelength-end)).argmin()
+    
+    # if spacings are not even, need to add element by element
+    total=0
+    for index in np.arange(start_ind,end_ind):
+      #  print index,index+1
+      #  print total
+        total = total+(flux[index]*(wavelength[index+1]-wavelength[index]))
+        
+    # if spacings are even, can just take the average of the flux array and times it by the total bandwidth
+    np.mean(flux[start_ind:end_ind])*(wavelength[end_ind]-wavelength[start_ind])
+    
+   # print('start index and end index: %s and %s'%(start_ind,end_ind))
+   # print(wavelength[start_ind:end_ind]-wavelength[start_ind+1:end_ind+1])
+    if plot==True:
+        plt.plot(wavelength[start_ind-100:end_ind+100],flux[start_ind-100:end_ind+100])
+        top = max(flux[start_ind-100:end_ind+100])
+        plt.plot([start,start,end,end,start],[0,top,top,0,0])
+        plt.show()
+        
+    return total
+
 def addnoise(data,resolution,exptime=10**3*3600.,CMOS=False):
     # Dragonfly info
     area_lens = np.pi*(14.3/2)**2 * 48. *10.                # cm^2, 48 * 14.3 cm diameter lenses
