@@ -177,13 +177,12 @@ def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar
         #cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
         
         # top color bar:
-        cax = div.append_axes("top",size="15%",pad=0.1)
+        cax = div.append_axes("top",size="5%",pad=0.1)
         cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
 
         cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
         cbar.ax.xaxis.set_label_position('top')      
         cbar.ax.xaxis.set_ticks_position('top')
-        
         cbar.solids.set_edgecolor("face")
         #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
         cbar.ax.tick_params(labelsize=fontsize)
