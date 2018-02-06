@@ -8,6 +8,27 @@ from astropy import constants as const
 from astropy import units as u
 #%matplotlib inline
 
+def imreduce_masked(img,mask,factor):
+    inshape = np.array(img.shape)
+    
+    inimg = img
+    inmask = mask
+    
+    # split along axes into groups that will be binned
+    inimg = np.array(np.split(inimg,inshape[0]/factor,axis=0))
+    inimg = np.array(np.split(inimg,inshape[1]/factor,axis=-1))
+    # do the same for the masks
+    inmask = np.array(np.split(inmask,inshape[0]/factor,axis=0))
+    inmask = np.array(np.split(inmask,inshape[1]/factor,axis=-1))
+    
+    # make the masked array
+    x = np.ma.array(inimg, mask=inmask)
+    
+    np.ma.mean(x,axis=-1)
+    np.ma.mean(x,axis=-1)
+    
+    
+
 def imreduce(img, factor, log=True, method = 'average'):
     """
         img: 2D image array
