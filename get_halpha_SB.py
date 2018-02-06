@@ -9,7 +9,7 @@ from astropy import units as u
 #%matplotlib inline
 from astropy.stats import sigma_clip
 
-def imreduce_masked(img,mask,factor):
+def imreduce_masked(img,mask,factor,fillvalue='max'):
     """
     reduces the resolution of an image by taking the mean of individual elements
     takes in a mask to mask out values to be not included in the mean
@@ -53,8 +53,13 @@ def imreduce_masked(img,mask,factor):
     
     # BUT WHAT IF THERE IS ONLY MASKED DATA WITHIN A BIN...
     if True in x.mask:
-        print "WARNING: At least one bin contains only masked data - will be filled to -999."
-        x = x.filled(-999)
+        print "WARNING: At least one bin contains only masked data - will be filled to %s."%fillvalue
+        if fillvalue=='mean':
+            x = x.filled(x.mean())
+        elif fillvalue=='max':
+            x = x.filled(x.max())
+        else:
+            x = x.filled(fillvalue)
         return x.T
     
     outimg = x.data
