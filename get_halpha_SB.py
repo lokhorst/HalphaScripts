@@ -22,6 +22,10 @@ def imreduce_masked(img,mask,factor):
     mask your mask like this:  
         clipped = sigma_clip(image,sig=3,iters=2)
         mask = clipped.mask
+    for testing:
+        image = np.array([[201,201,1,1],[201,201,1,1],[2,2,3,3],[2,2,3,3]])
+        clipped = sigma_clip(image,sig=1,iters=1)
+        mask = clipped.mask
     """
     
     inshape = np.array(img.shape)
@@ -30,8 +34,7 @@ def imreduce_masked(img,mask,factor):
     inmask = mask
     
     if np.sum(inshape%factor) != 0:
-        print('Output grid must have a integer number of cells: \
-                cannot reduce image pixels by a factor %i'%factor)
+        print('Output grid must have a integer number of cells: cannot reduce image pixels by a factor %i'%factor)
         return None
     
     # split along axes into groups that will be binned
@@ -47,6 +50,12 @@ def imreduce_masked(img,mask,factor):
     # take the mean along different axes
     x = np.ma.mean(x,axis=-1)
     x = np.ma.mean(x,axis=-1)
+    
+    # BUT WHAT IF THERE IS ONLY MASKED DATA WITHIN A BIN...
+    if True in x.mask:
+        print "WARNING: At least one bin contains only masked data - will be filled to -999."
+        x = x.filled(-999)
+        return x.T
     
     outimg = x.data
     
