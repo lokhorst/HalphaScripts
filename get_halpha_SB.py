@@ -7,12 +7,32 @@ import mpl_toolkits.axes_grid1 as axgrid
 from astropy import constants as const
 from astropy import units as u
 #%matplotlib inline
+from astropy.stats import sigma_clip
 
 def imreduce_masked(img,mask,factor):
+    """
+    reduces the resolution of an image by taking the mean of individual elements
+    takes in a mask to mask out values to be not included in the mean
+        img: 2D image array
+        mask: mask for the 2D image array
+        factor: factor by which to reduce the number of array elements along each axis
+    examples:
+    for testing: 
+        image = np.array([[1,1,2,2],[1,201,2,2],[3,3,200,4],[3,3,4,4]])
+    mask your mask like this:  
+        clipped = sigma_clip(image,sig=3,iters=2)
+        mask = clipped.mask
+    """
+    
     inshape = np.array(img.shape)
     
     inimg = img
     inmask = mask
+    
+    if np.sum(inshape%factor) != 0:
+        print('Output grid must have a integer number of cells: \
+                cannot reduce image pixels by a factor %i'%factor)
+        return None
     
     # split along axes into groups that will be binned
     inimg = np.array(np.split(inimg,inshape[0]/factor,axis=0))
@@ -24,10 +44,13 @@ def imreduce_masked(img,mask,factor):
     # make the masked array
     x = np.ma.array(inimg, mask=inmask)
     
-    np.ma.mean(x,axis=-1)
-    np.ma.mean(x,axis=-1)
+    # take the mean along different axes
+    x = np.ma.mean(x,axis=-1)
+    x = np.ma.mean(x,axis=-1)
     
+    outimg = x.data
     
+    return outimg.T
 
 def imreduce(img, factor, log=True, method = 'average'):
     """
