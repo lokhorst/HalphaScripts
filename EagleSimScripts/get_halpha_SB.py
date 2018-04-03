@@ -160,7 +160,7 @@ def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar
         ax.set_xticks([])
         ax.set_yticks([])
     
-    #colmap = 'viridis' #'afmhot'
+    colmap = 'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     
     # nearest neighbour interpolation does not do any averaging, it just picks the nearest point and uses that as the value for a specific section in the image
