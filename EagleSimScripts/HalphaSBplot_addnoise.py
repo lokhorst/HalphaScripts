@@ -178,7 +178,7 @@ def addnoise(data,resolution,R_squared=None,exptime=10**3*3600.,CMOS=False, debu
         R = np.sqrt(R_squared)
         for x in range(data.shape[0]):
             for y in range(data.shape[1]):
-                R_squared_array[x][y]=np.mean(np.random.normal(R,np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   #### WHY IS B_SKY IN HERE ???? ####
+              #  R_squared_array[x][y]=np.mean(np.random.normal(R,np.sqrt(np.sqrt(B_sky)),int(numpixel)))**2   #### WHY IS B_SKY IN HERE ???? ####
                 R_squared_array[x][y]=np.mean(np.random.normal(0,R,int(numpixel)))**2
         R_squared_total = R_squared * round(numexposures)
         R_squared_total_array = R_squared_array * round(numexposures)
@@ -210,8 +210,8 @@ def addnoise(data,resolution,R_squared=None,exptime=10**3*3600.,CMOS=False, debu
     noise_from_detector = noise_from_detector + D_array_total
     
     if debugging:
-        print "DEBUGGING: an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array_total + D_array_total + R_squared_total_array*numpixel)[0]
-        print "DEBUGGING: an example total noise (squarerooted) is: %s"%sigma[0]
+        print "DEBUGGING: an example total noise (not squarerooted) is: %s"%(detsignal + B_sky_array + D_array_total + R_squared_total_array*numpixel)[0]
+        #print "DEBUGGING: an example total noise (squarerooted) is: %s"%sigma[0]
     
     noiseadded_signal = noiseadded_signal + noise_from_detector
     

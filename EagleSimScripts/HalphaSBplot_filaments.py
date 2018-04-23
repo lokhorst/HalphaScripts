@@ -2,7 +2,7 @@
 
 """ Plots a filament from EAGLE simulation (contours overlaid or noise added for mock observation)
 
-Usage: HalphaSBplot_filaments.py [-h] [-s] [-v] [-m] [-g] [--debug] [-c] [-r RESOLUTION] [-t EXPTIME]
+Usage: HalphaSBplot_filaments.py [-h] [-s] [-v] [-m] [-g] [-p] [--debug] [-c] [-r RESOLUTION] [-t EXPTIME]
 
 Options:
     -h, --help                          Show this screen.
@@ -419,25 +419,24 @@ def plotfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,colo
     plt.tight_layout()
 
 
-def plotit(exptime, ax1, mymap='gist_gray', res=500, label=''):
+def plotit(SBdata,exptime, ax1, mymap='gist_gray', res=500, label=''):
     
     addnoisesqrt = False
-
     #  Add the noise to the EAGLE SB data
     try:
         if res>99 and res<101:
             resolution = 100. #arcsec
-            SBdata = np.load('SBdata_100arcsec.npz')['arr_0']
+            SBdata = np.load('mockobservations/SBdata_100arcsec.npz')['arr_0']
         elif res>499 and res < 501:
             resolution = 500. #arcsec
-            SBdata = np.load('SBdata_500arcsec.npz')['arr_0']   
+            SBdata = np.load('mockobservations/SBdata_500arcsec.npz')['arr_0']   
         elif res>999 and res < 1001:
             resolution = 1000. #arcsec
-            SBdata = np.load('SBdata_1000arcsec.npz')['arr_0']
+            SBdata = np.load('mockobservations/SBdata_1000arcsec.npz')['arr_0']
         else:
-            print "Unsupported resolution"
+            print "Unsupported resolution: %s"% resolution
     except:
-        print "Unsupported resolution"
+        print "Unsupported resolution: %s"% resolution
         
     SBdata_exp0 = HalphaSBplot_addnoise.addnoise(SBdata,resolution,exptime=exptime,CMOS=True)
 
@@ -544,22 +543,22 @@ if __name__ == "__main__":
         ##### figure with full resolution EAGLE SB in filament in first plot, then mock observations at different resolutions following #####
         fig,(ax1,ax2,ax3,ax4) = plt.subplots(4,1,figsize = (8.5, 7.))
         hour = 3600; map = 'viridis'; label = 'Warm/Hot gas filament in the cosmic web from the EAGLE simulation'
-        SBdata = np.load('SBdata_full.npz')['arr_0']
+        SBdata = np.load('mockobservations/SBdata_full.npz')['arr_0']
         get_halpha_SB.makemapfilament(SBdata,ax1,colmap=map,labelaxes=True)#,label=label)
         map = 'bone'; label = '100" resolution'
         exptime = 10**3 * 3600
-        plotit(exptime,ax2, map, 100)
+        plotit(SBdata,exptime,ax2, mymap=map, res=100)
         #ax2.locator_params(axis='y', nticks=3)
         ax2.set_xticklabels([])
         ax2.set_xlabel('')
         #ax2.set_xticks([])
         label = '500" resolution'
-        plotit(exptime,ax3, map, 500)
+        plotit(SBdata,exptime,ax3, mymap=map, res=500)
         ax3.set_xticklabels([])
         ax3.set_xlabel('')
         #ax3.set_xticks([])
         label = '1000" resolution'
-        plotit(exptime,ax4, map, 1000)
+        plotit(SBdata,exptime,ax4, mymap=map, res=1000)
         ax4.set_xticklabels([])
         ax4.set_xlabel('')
         #ax4.set_xticks([])
