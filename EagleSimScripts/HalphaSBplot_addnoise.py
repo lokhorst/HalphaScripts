@@ -194,8 +194,9 @@ def addnoise(data,resolution,R_squared=None,exptime=10**3*3600.,CMOS=False, debu
 
     def add_darkcurrent():
         'DarkCurrent'
-        noise_from_detector = 0.0
-        D_total = D*exptime*numpixel
+        #noise_from_detector = 0.0
+        numlens=48.
+        D_total = D*exptime*numpixel*numlens
         D_array = np.zeros((data.shape[0],data.shape[1]))
         for x in range(data.shape[0]):
             for y in range(data.shape[1]):
