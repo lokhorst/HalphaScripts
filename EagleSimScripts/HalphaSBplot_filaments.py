@@ -423,6 +423,8 @@ def plotit(SBdata,exptime, ax1, mymap='gist_gray', res=500, label=''):
     
     addnoisesqrt = False
     #  Add the noise to the EAGLE SB data
+    # These files were made in HalphaSBregion.py most likely
+    # Now they can be made using extract_filament.ipynb (see make_mockobs_filament_testing)
     try:
         if res>99 and res<101:
             resolution = 100. #arcsec

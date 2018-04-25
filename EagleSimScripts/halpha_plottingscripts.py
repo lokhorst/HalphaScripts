@@ -1,3 +1,18 @@
+
+
+"""
+
+f, axarr = plt.subplots(5, 5,figsize=(16,16))
+axarr[i,j].plot()
+
+SHARE AXES
+
+
+
+"""
+
+
+
 ### mask_galaxies.ipynb
 
 def pltimg(data_FOV,xystarts,size,ax=None):
@@ -79,7 +94,7 @@ def plotdata(data,ax=None,bounds=None,colorbar=False,colmap='viridis'):
 
 ### extract_filament.ipynb
 
-def plotfilament(SBdata_5,ax):
+def plotfilament(SBdata_5,ax,colorbar=True):
     clabel = r'log photons/cm$^2$/s/sr'; Vmin = None; Vmax= None
     fontsize=13
     ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
@@ -90,10 +105,67 @@ def plotfilament(SBdata_5,ax):
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
 
     img = ax.imshow(SBdata_5,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
+    
+    if colorbar:
+        div = axgrid.make_axes_locatable(ax)
+        cax = div.append_axes("right",size="10%",pad=0.15)
+        cbar = plt.colorbar(img,cax=cax,orientation='vertical')#,boundaries=np.linspace(0,90000))
+        cbar.solids.set_edgecolor("face")
+        cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
 
-    div = axgrid.make_axes_locatable(ax)
-    cax = div.append_axes("right",size="15%",pad=0.1)
-    cbar = plt.colorbar(img, cax=cax)
-    cbar.solids.set_edgecolor("face")
-    cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
-    cbar.ax.tick_params(labelsize=fontsize)
+
+### make_mockobs_forPieterandBob
+
+def clippeddata(lowres,mask=False):
+    print ""
+    print "standard deviation: %s"%np.std(lowres)
+    print "standard deviation*0.005: %s"%(np.std(lowres)*0.005)
+    print "min value: %s"%np.min(lowres)
+    median = np.median(lowres)
+    print "median: %s"%median
+    
+    sig = np.sqrt(np.abs(median))  # kind of works because for Poisson -> Gaussian, sigma is sqrt of mean ~ median
+    print "sqrt of the median (sig) is: %s"%np.sqrt(median)
+    
+    mymax = median + 4*sig
+    mymin = median - sig
+    
+    print "mymin: %s"%mymin
+    print "mymax: %s"%mymax
+    
+    clipped = lowres + 0
+    clipped[clipped < mymin]=0#mymin 
+
+    clipped[clipped > mymax]=mymax
+
+    print np.min(clipped),np.max(clipped)
+    
+    return np.log10(clipped)
+
+### make_mockobs_filaments(_testing)
+
+def plotfilamentnice(SBdata_exp0,ax,mymap='gist_gray',label='',mask=None):
+    """
+    If the data is masked it's going to look weird because of limit changing going on here
+    Pass the mask to this script and it will reapply the mask to the data after messing around with the limits to make
+    the plot look nice.
+    """
+    # Plot the data nicely
+    median = np.median(SBdata_exp0);
+    sig = np.sqrt(median)
+
+    mymax = median + 40*sig
+    mymin = median - 5*sig
+
+    SBdata_clipped = SBdata_exp0 + 0
+    SBdata_clipped[SBdata_clipped < mymin] = mymin
+    SBdata_clipped[SBdata_clipped > mymax] = mymax
+    SBdata_clipped = SBdata_clipped - mymin
+    
+    if mask is not None:
+        SBdata_clipped[mask]=0
+    
+    get_halpha_SB.makemapfilament(np.log10(SBdata_clipped**0.5),ax,contours=False,mockobs=True,\
+                                  colmap=mymap,label=label,labelaxes=True)
+
