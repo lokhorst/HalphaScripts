@@ -180,3 +180,55 @@ def plotfilamentnice(SBdata_exp0,ax,mymap='gist_gray',label='',mask=None):
     get_halpha_SB.makemapfilament(np.log10(SBdata_clipped**0.5),ax,contours=False,mockobs=True,\
                                   colmap=mymap,label=label,labelaxes=True)
 
+def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,colorbar=False,mockobs=False,labelaxes=False,label=''):
+    # setting up the plot
+    if mockobs:
+        clabel = r'log signal (photons)'
+    else:
+        clabel = r'log photons/cm$^2$/s/sr'
+    fontsize=13
+
+    if labelaxes:
+        ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+        ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+        ax.locator_params(axis='y', nticks=3)
+        ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
+        ax.xaxis.set_label_position('top') 
+        ax.xaxis.tick_top()
+    else:
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        
+    ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
+
+    img = ax.imshow(SBdata.T,origin='lower',extent=(0,3.7,0,0.7), cmap=cm.get_cmap(colmap), interpolation='nearest')
+
+    div = axgrid.make_axes_locatable(ax)
+    # plot colorbar
+    if colorbar:
+        cax = div.append_axes("bottom",size="15%",pad=0.1)
+        cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
+        cbar.solids.set_edgecolor("face")
+        cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
+        #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
+    
+    font = {'family': 'serif',
+        'color':  'yellow',
+        'weight': 'bold',
+        'size': 12,
+        }
+    
+    font = {'family': 'serif',
+        'color':  'black',
+        'weight': 'bold',
+        'size': 12,
+        }
+
+    # Bottom middle
+#    ax.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
+    ax.text(0.98,0.8,label,fontdict=font,horizontalalignment='right',backgroundcolor='white',transform=ax.transAxes)
+
+    
