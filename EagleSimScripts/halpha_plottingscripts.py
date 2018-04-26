@@ -5,11 +5,40 @@
 f, axarr = plt.subplots(5, 5,figsize=(16,16))
 axarr[i,j].plot()
 
+FLEXIBLE AXES -  rect [left, bottom, width, height]; fig.add_axes(rect)
+fig = plt.figure(figsize=(12, 12))
+ax1 = fig.add_axes([0.37, 0.12, 0.40, 0.5])
+
+
 SHARE AXES
 
-
-
 """
+
+### extract_FOV_and_cutout_galaxies.ipynb
+
+def pltimg(data_FOV,ax,xystarts,size,label=None,colmap = 'viridis',colorbar=True,labelaxes=True):
+    ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
+    img = ax.imshow(data_FOV.T,extent=(xystarts[0],xystarts[0]+size[0],xystarts[1],xystarts[1]+size[1]),\
+                    origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest')
+    if labelaxes:
+        fontsize=13
+        ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
+        ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
+        ax.locator_params(axis='y', nticks=3)
+        ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
+        ax.xaxis.set_label_position('top') 
+        ax.xaxis.tick_top()
+    else:
+        ax.set_yticklabels([])
+        ax.set_xticklabels([])
+        ax.set_xticks([])
+        ax.set_yticks([])
+    if colorbar:
+        div = axgrid.make_axes_locatable(ax)
+        cax = div.append_axes("top",size="5%",pad=0.1)
+        cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
+    if label is not None:
+        ax.text(0.0,0.9,label,transform=ax.transAxes,color='white',fontsize=9)
 
 ### galaxy_cutouts.ipynb
 
