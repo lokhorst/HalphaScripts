@@ -42,16 +42,15 @@ def pltimg(data_FOV,ax,xystarts,size,label=None,colmap = 'viridis',colorbar=True
 
 ### galaxy_cutouts.ipynb
 
-def pltimg(data_FOV,ax,xystarts,size,label=None,colmap = 'viridis'):
-    ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
-    img = ax.imshow(data_FOV.T,extent=(xystarts[0],xystarts[0]+size[0],xystarts[1],xystarts[1]+size[1]),\
-                    origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest')
-    div = axgrid.make_axes_locatable(ax)
-    cax = div.append_axes("top",size="5%",pad=0.1)
-    cbar = plt.colorbar(img, cax=cax,orientation='horizontal')
-    if label is not None:
-        ax.text(0.0,0.9,label,transform=ax.transAxes,color='white')
+def radial_profile(data, center):
+    y, x = np.indices((data.shape))
+    r = np.sqrt((x - center[0])**2 + (y - center[1])**2)
+    r = r.astype(np.int)
 
+    tbin = np.bincount(r.ravel(), data.ravel())
+    nr = np.bincount(r.ravel())
+    radialprofile = tbin / nr
+    return radialprofile 
 
 ### mask_galaxies.ipynb
 
@@ -260,4 +259,3 @@ def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,c
 #    ax.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
     ax.text(0.98,0.8,label,fontdict=font,horizontalalignment='right',backgroundcolor='white',transform=ax.transAxes)
 
-    
