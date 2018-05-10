@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 from PIL import Image
 
-img = Image.open('one2.png')
+img = Image.open('original.png')
 img = img.convert("RGBA")
 
 pixdata = img.load()
@@ -25,10 +25,10 @@ for y in xrange(img.size[1]):
             xvalue.append(x)
             yvalue.append(y)
 
-img.save("one5.png", "PNG")
+img.save("original_trans.png", "PNG")
 
 ## Uncomment to save data in lists to files
-#with open('xdata_one.dat', 'wb') as f:
-#    pickle.dump(xvalue, f)
-#with open('ydata_one.dat', 'wb') as f:
-#    pickle.dump(yvalue, f)
+with open('xdata_tmp.dat', 'wb') as f:
+    pickle.dump(xvalue, f)
+with open('ydata_tmp.dat', 'wb') as f:
+    pickle.dump(yvalue, f)
