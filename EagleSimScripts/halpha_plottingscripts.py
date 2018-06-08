@@ -16,6 +16,8 @@ SHARE AXES
 
 ### extract_FOV_and_cutout_galaxies.ipynb
 
+import matplotlib.cm as cm
+import mpl_toolkits.axes_grid1 as axgrid
 def pltimg(data_FOV,ax,xystarts,size,label=None,colmap = 'viridis',colorbar=True,labelaxes=True):
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     img = ax.imshow(data_FOV.T,extent=(xystarts[0],xystarts[0]+size[0],xystarts[1],xystarts[1]+size[1]),\
