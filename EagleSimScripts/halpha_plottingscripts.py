@@ -11,6 +11,12 @@ ax1 = fig.add_axes([0.37, 0.12, 0.40, 0.5])
 
 
 SHARE AXES
+ax2.set_yticklabels([])
+ax2.set_ylabel('')
+ax3.set_yticklabels([])
+ax3.set_ylabel('')
+
+fig.subplots_adjust( wspace=0.)
 
 """
 
