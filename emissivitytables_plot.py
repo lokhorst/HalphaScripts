@@ -83,7 +83,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-tablefilename = '/Users/lokhorst/Documents/Eagle/scripts/EmmisivityTables/hydrogen.hdf5'
+tablefilename = './EmmisivityTables/hydrogen.hdf5'
 tablefile = h5py.File(tablefilename, "r")
 logTK =   np.array(tablefile.get('logt'),dtype=np.float32)
 logrhocm3 =   np.array(tablefile.get('logd'),dtype=np.float32)
