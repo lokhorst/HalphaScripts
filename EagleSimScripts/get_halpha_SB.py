@@ -122,11 +122,9 @@ def imreduce(img, factor, log=True, method = 'average'):
         inimg = np.log10(inimg)
     return inimg.T
 
-def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar=True,mockobs=False,labelaxes=True,label=''):
-    fontsize=13
+def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar=True,mockobs=False,labelaxes=True,label='',Vmin = None, Vmax = None):
+    fontsize=13,
     #xystarts = [0.,0.] # lower left origin of the plot
-    Vmin = None
-    Vmax = None
     
     if mockobs:
         clabel = r'log signal (photons)'
