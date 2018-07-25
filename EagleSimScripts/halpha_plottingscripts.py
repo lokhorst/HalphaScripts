@@ -18,6 +18,9 @@ ax3.set_ylabel('')
 
 fig.subplots_adjust( wspace=0.)
 
+ADD TEXT TO PLOT AXES
+ax.text(0.0,0.9,label,transform=ax.transAxes,color='white',fontsize=9)
+
 """
 
 ### extract_FOV_and_cutout_galaxies.ipynb
