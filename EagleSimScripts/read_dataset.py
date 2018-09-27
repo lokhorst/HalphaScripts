@@ -3,13 +3,13 @@ import h5py
 
 def read_dataset(itype, att, nfiles=16):
     """ Read a selected dataset, itype is the PartType and att is the attribute name. """
-
+    
     # Output array.
     data = []
 
     # Loop over each file and extract the data.
     for i in range(nfiles):
-        f = h5py.File('./data/snap_028_z000p000.%i.hdf5'%i, 'r')
+        f = h5py.File(fileloc+'snap_028_z000p000.%i.hdf5'%i, 'r')
         tmp = f['PartType%i/%s'%(itype, att)][...]
         data.append(tmp)
 
