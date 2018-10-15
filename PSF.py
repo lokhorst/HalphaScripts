@@ -66,6 +66,7 @@ class PSF(object):
         def aureole(theta):
             totalflux = flux_fraction*self.flux
             fwhm = self.fwhm
+            print fwhm
             d = d0 * fwhm
             coeff = totalflux/(8*np.pi*d**2)
             cosfac = np.cos(np.arctan(theta/(2*d)))
