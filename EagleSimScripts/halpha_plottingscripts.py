@@ -21,6 +21,14 @@ fig.subplots_adjust( wspace=0.)
 ADD TEXT TO PLOT AXES
 ax.text(0.0,0.9,label,transform=ax.transAxes,color='white',fontsize=9)
 
+BOLD TEXT
+from matplotlib.font_manager import FontProperties
+font0 = FontProperties()
+font = font0.copy()
+font.set_weight('semibold')
+ax1.text(0.4,0.05,'50 arcsec features',transform=ax1.transAxes,color='white',
+        fontsize=16,fontproperties=font)
+https://matplotlib.org/examples/pylab_examples/fonts_demo.html
 """
 
 ### extract_FOV_and_cutout_galaxies.ipynb

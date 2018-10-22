@@ -123,7 +123,7 @@ def imreduce(img, factor, log=True, method = 'average'):
     return inimg.T
 
 def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar=True,mockobs=False,labelaxes=True,label='',Vmin = None, Vmax = None):
-    fontsize=13,
+    fontsize=13
     #xystarts = [0.,0.] # lower left origin of the plot
     
     if mockobs:
