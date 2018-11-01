@@ -37,6 +37,7 @@ from read_header import read_header
 import h5py
 
 import astropy.units as u
+import mpl_toolkits.axes_grid1 as axgrid
 
 def print_verbose_string(printme):
     print >> sys.stderr, "VERBOSE: %s" % printme
@@ -57,6 +58,7 @@ class GasVelocities_ReadEagle:
         self.locplot(gn, sgn, centre)
         self.hist_byradius(gn, sgn)
         self.hist_relvel_byradius(gn, sgn)
+        self.plotOabundance(gn, sgn)
 
     def read_galaxy(self, itype, gn, sgn, centre, velocity, load_region_length, fileloc):
         """ For a given galaxy (defined by its GroupNumber and SubGroupNumber)
@@ -82,7 +84,7 @@ class GasVelocities_ReadEagle:
 
         # Load data using read_eagle, load conversion factors manually.
         f = h5py.File(fileloc+'snap_028_z000p000.0.hdf5', 'r')
-        for att in ['GroupNumber', 'SubGroupNumber', 'StarFormationRate', 'Temperature', 'Density', 'Coordinates', 'Velocity']:
+        for att in ['GroupNumber', 'SubGroupNumber', 'StarFormationRate', 'Temperature', 'Density', 'Coordinates', 'Velocity','SmoothedElementAbundance/Oxygen']:
             tmp  = eagle_data.read_dataset(itype, att)
             cgs  = f['PartType%i/%s'%(itype, att)].attrs.get('CGSConversionFactor')
             aexp = f['PartType%i/%s'%(itype, att)].attrs.get('aexp-scale-exponent')
@@ -97,6 +99,9 @@ class GasVelocities_ReadEagle:
         
         # Put centre back into proper units
         centre /= self.h
+        
+        print 'data[\'SmoothedElementAbundance/Oxygen\']:'
+        print data['SmoothedElementAbundance/Oxygen']
         
         centre_cgs = centre * u.Mpc.to(u.cm)
         velocity_cgs = velocity * u.km.to(u.cm)
@@ -339,6 +344,87 @@ class GasVelocities_ReadEagle:
             plt.savefig('gasvelocities_hist_radbins_relvel_gn%s_sgn%s.png'%(gn,sgn))
             plt.close()
         
+    def plotOabundance(self,gn, sgn):
+        """Plot a map of abundance in the gas particles for Oxygen """
+        
+        fig, ((ax1,ax2),(ax3,ax4)) = plt.subplots(2,2,figsize = (7,7))        
+        
+        'from make_maps_opts_locs: solar abundance is 4.8977835E-4'
+        oxysol = 4.8977835E-4
+        print 'solar oxygen abundance:'
+        print oxysol
+        print np.log10(oxysol)
+        
+        
+        'grab the oxygen abundances into an array first, so can pick out limits for the plots'
+        yy = self.gas['SmoothedElementAbundance/Oxygen']
+        
+        zmax = max(yy)
+        print np.percentile(yy,[10.,25.,50.,75.,90.])
+        zmin = np.percentile(yy,10.)
+        print 'zmin,zmax'
+        print zmin,zmax
+        print 'log zmin,zmax'
+        print np.log10(zmin),np.log10(zmax)
+        
+        print ""
+                
+        cm = plt.cm.get_cmap('RdYlBu')
+
+        zmin = np.log10(zmin)
+        zmax = np.log10(zmax)
+
+        mask = np.where(self.gas['Temperature'] > 10**6)
+      #  yy = self.gas['SmoothedElementAbundance/Oxygen'][mask]
+        yy = np.log10(self.gas['SmoothedElementAbundance/Oxygen'][mask])
+        sc = ax1.scatter(self.gas['Coordinates'][mask][:,0]* u.cm.to(u.Mpc),self.gas['Coordinates'][mask][:,1]* u.cm.to(u.Mpc),alpha=0.3,\
+                         c=yy, vmin=zmin, vmax=zmax, s=30, cmap=cm,label = 'logT > 6')
+        t = ax1.text(0.1,0.9,'logT > 6',transform=ax1.transAxes,color='black',fontsize=9)
+        t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='black'))
+        
+        mask = np.where((self.gas['Temperature'] <= 10**6) & (self.gas['Temperature'] > 10**5))
+      #  yy = self.gas['SmoothedElementAbundance/Oxygen'][mask]
+        yy = np.log10(self.gas['SmoothedElementAbundance/Oxygen'][mask])
+        sc = ax2.scatter(self.gas['Coordinates'][mask][:,0]* u.cm.to(u.Mpc),self.gas['Coordinates'][mask][:,1]* u.cm.to(u.Mpc),alpha=0.3,\
+                         c=yy, vmin=zmin, vmax=zmax, s=30, cmap=cm,label = '5 < logT < 6')
+        t = ax2.text(0.1,0.9,'5 < logT < 6',transform=ax2.transAxes,color='black',fontsize=9)
+        t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='black'))
+        div = axgrid.make_axes_locatable(ax2)
+        cax = div.append_axes("right",size="5%",pad=0.1)
+        cbar = plt.colorbar(sc,label='', cax=cax,orientation='vertical')
+        cbar.ax.set_ylabel(r'Oxygen Mass Fraction')#, fontsize=fontsize)
+        
+        mask = np.where((self.gas['Temperature'] <= 10**5) & (self.gas['Temperature'] > 10**4))
+     #   yy = self.gas['SmoothedElementAbundance/Oxygen'][mask]
+        yy = np.log10(self.gas['SmoothedElementAbundance/Oxygen'][mask])
+        sc = ax3.scatter(self.gas['Coordinates'][mask][:,0]* u.cm.to(u.Mpc),self.gas['Coordinates'][mask][:,1]* u.cm.to(u.Mpc),alpha=0.3,\
+                         c=yy, vmin=zmin, vmax=zmax, s=30, cmap=cm,label = '4 < logT < 5')
+        t = ax3.text(0.1,0.9,'4 < logT < 5',transform=ax3.transAxes,color='black',fontsize=9)
+        t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='black'))
+        
+        mask = np.where(self.gas['Temperature'] <= 10**4)
+     #   yy = self.gas['SmoothedElementAbundance/Oxygen'][mask]
+        yy = np.log10(self.gas['SmoothedElementAbundance/Oxygen'][mask])
+        sc = ax4.scatter(self.gas['Coordinates'][mask][:,0]* u.cm.to(u.Mpc),self.gas['Coordinates'][mask][:,1]* u.cm.to(u.Mpc),alpha=0.3,\
+                         c=yy, vmin=zmin, vmax=zmax, s=30, cmap=cm,label = 'logT < 4')
+        t = ax4.text(0.1,0.9,'logT < 4',transform=ax4.transAxes,color='black',fontsize=9)
+        t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor='black'))
+        div = axgrid.make_axes_locatable(ax4)
+        cax = div.append_axes("right",size="5%",pad=0.1)
+        cbar = plt.colorbar(sc,label='', cax=cax,orientation='vertical')
+        cbar.ax.set_ylabel(r'Oxygen Mass Fraction')#, fontsize=fontsize)
+        
+        for ax in [ax1,ax2,ax3,ax4]:
+         #   ax.plot(centre[0]* u.Mpc.to(u.cm),centre[1]* u.Mpc.to(u.cm),'o',color='black')
+           # ax.plot(centre[0],centre[1],'o',color='black')
+            ax.set_ylabel('Y (cMpc)'); ax.set_xlabel('X (cMpc)')
+            ax.minorticks_on()
+
+        plt.tight_layout()
+       # plt.show()
+        plt.savefig('gasvelocities_oxygenabunds_gn%s_sgn%s.png'%(gn,sgn))
+        plt.close()
+         
 
 ####################### BODY OF PROGRAM STARTS HERE ########################
 
@@ -361,6 +447,14 @@ if __name__ == "__main__":
     velocity = np.array([25.2508, 25.5319, 2.74462]) # km / s
     x = GasVelocities_ReadEagle(1, 0, centre,velocity, load_region_length=0.2, fileloc = fileloc)
     
+    # 25 Mpc REFERENCE BOX
+    """galID, gn, subgn, x, y, z, vx, vy, vz
+    296111, 12, 0, 12.7689, 7.78359, 5.0325, 17.1401, 72.837, 53.3104, 7.49494e+10"""
+    fileloc = '/Users/lokhorst/Data/EAGLE/RefL0025N0376/snapshot_028_z000p000/'
+    centre = np.array([12.7689, 7.78359, 5.0325])  # cMpc
+    velocity = np.array([17.1401, 72.837, 53.3104]) # km / s
+    x = GasVelocities_ReadEagle(12, 0, centre,velocity, load_region_length=0.2, fileloc = fileloc)
+    
     # Use the COP for the galaxies that we consider in the paper (print off COP coords in extract_FOV_and_cutout_galaxies)
     """galID, gn, subgn, x, y, z, vx, vy, vz
     13738373, 134,  1, 50.0543327332, 14.3326339722, 11.5063114166, -185.157424927, -219.539093018,  25.2807445526
@@ -370,12 +464,16 @@ if __name__ == "__main__":
     9958488,  1801, 0, 51.2028465271, 12.965212822,  13.6717453003, -43.2850875854, -199.545211792,  100.731079102
     13566041, 7701, 0, 51.2168502808, 14.3266563416, 13.995010376,  -16.8092041016, -294.485870361,  66.829208374
     """
+    """
     ### THIS IS FOR THE 100Mpc REFERENCE BOX ###
   #  11911337, 4067, 0, 50.4869918823, 13.5846481323, 12.3390817642, -81.2321090698,   43.9984779358, 362.303588867 ## This one first 
+    
+    """
     fileloc = '/Users/lokhorst/Data/EAGLE/RefL0100N1504/snapshot_028_z000p000/'
     centre = np.array([50.4869918823, 13.5846481323, 12.3390817642])  # cMpc
     velocity = np.array([-81.2321090698, 43.9984779358, 362.303588867]) # km / s
     x = GasVelocities_ReadEagle(4067, 0, centre, velocity, load_region_length=0.2, fileloc = fileloc)
+    """
     
   #  13738373, 134,  1, 50.0543327332, 14.3326339722, 11.5063114166, -185.157424927, -219.539093018,  25.2807445526
     centre = np.array([50.0543327332, 14.3326339722, 11.5063114166])  # cMpc
@@ -401,3 +499,4 @@ if __name__ == "__main__":
     centre = np.array([51.2168502808, 14.3266563416, 13.995010376])  # cMpc
     velocity = np.array([-16.8092041016, -294.485870361,  66.829208374]) # km / s
     x = GasVelocities_ReadEagle(7701, 0, centre, velocity, load_region_length=0.2, fileloc = fileloc)
+    """
