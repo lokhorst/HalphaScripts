@@ -29,6 +29,9 @@ font.set_weight('semibold')
 ax1.text(0.4,0.05,'50 arcsec features',transform=ax1.transAxes,color='white',
         fontsize=16,fontproperties=font)
 https://matplotlib.org/examples/pylab_examples/fonts_demo.html
+
+BOLD SYMBOLS - use \mathbf and 'r' in front of string like so:
+r'Ly$\mathbf{\alpha}$'
 """
 
 ### extract_FOV_and_cutout_galaxies.ipynb
@@ -45,7 +48,7 @@ def pltimg(data_FOV,ax,xystarts,size,label=None,colmap = 'viridis',colorbar=True
         ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
         ax.locator_params(axis='y', nticks=3)
         ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
-        ax.xaxis.set_label_position('top') 
+        ax.xaxis.set_label_position('top')
         ax.xaxis.tick_top()
     else:
         ax.set_yticklabels([])
@@ -69,7 +72,7 @@ def radial_profile(data, center):
     tbin = np.bincount(r.ravel(), data.ravel())
     nr = np.bincount(r.ravel())
     radialprofile = tbin / nr
-    return radialprofile 
+    return radialprofile
 
 ### mask_galaxies.ipynb
 
@@ -99,7 +102,7 @@ def pltcutout(data_FOV,xystarts,size,ax=None):
     boxlength = 1. #Mpc
     pixsizex=xpixsize/xlength*boxlength
     data_cutout = data_FOV[midx-pixsizex/2:midx+pixsizex/2,midy-pixsizex/2:midy+pixsizex/2]
-        
+
     xystarts_x = xystarts[0] + (midx-pixsizex/2)/(xpixsize/xlength)
     xystarts_y = xystarts[1] + (midy-pixsizex/2)/(ypixsize/ylength)
     size_new = [boxlength,boxlength]
@@ -140,10 +143,10 @@ def plotdata(data,ax=None,bounds=None,colorbar=False,colmap='viridis'):
     else:
         img = ax.imshow(data,origin='lower',cmap=cm.get_cmap(colmap),vmin=bounds[0],vmax=bounds[1],interpolation='nearest')
     ax.set_aspect('equal')
-    
+
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     ax.patch.set_facecolor('black')
-    
+
     if colorbar:
         div = axgrid.make_axes_locatable(ax)
         cax = div.append_axes("right",size="10%",pad=0.15)
@@ -157,13 +160,13 @@ def plotfilament(SBdata_5,ax,colorbar=True):
     fontsize=13
     ax.set_xlabel(r'X [cMpc]',fontsize=fontsize)
     ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
-    
+
     ax.tick_params(labelsize=fontsize)
     colmap = 'viridis' #'afmhot'
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
 
     img = ax.imshow(SBdata_5,origin='lower', cmap=cm.get_cmap(colmap), vmin = Vmin, vmax=Vmax,interpolation='nearest')
-    
+
     if colorbar:
         div = axgrid.make_axes_locatable(ax)
         cax = div.append_axes("right",size="10%",pad=0.15)
@@ -182,23 +185,23 @@ def clippeddata(lowres,mask=False):
     print "min value: %s"%np.min(lowres)
     median = np.median(lowres)
     print "median: %s"%median
-    
+
     sig = np.sqrt(np.abs(median))  # kind of works because for Poisson -> Gaussian, sigma is sqrt of mean ~ median
     print "sqrt of the median (sig) is: %s"%np.sqrt(median)
-    
+
     mymax = median + 4*sig
     mymin = median - sig
-    
+
     print "mymin: %s"%mymin
     print "mymax: %s"%mymax
-    
+
     clipped = lowres + 0
-    clipped[clipped < mymin]=0#mymin 
+    clipped[clipped < mymin]=0#mymin
 
     clipped[clipped > mymax]=mymax
 
     print np.min(clipped),np.max(clipped)
-    
+
     return np.log10(clipped)
 
 ### make_mockobs_filaments(_testing)
@@ -220,10 +223,10 @@ def plotfilamentnice(SBdata_exp0,ax,mymap='gist_gray',label='',mask=None):
     SBdata_clipped[SBdata_clipped < mymin] = mymin
     SBdata_clipped[SBdata_clipped > mymax] = mymax
     SBdata_clipped = SBdata_clipped - mymin
-    
+
     if mask is not None:
         SBdata_clipped[mask]=0
-    
+
     get_halpha_SB.makemapfilament(np.log10(SBdata_clipped**0.5),ax,contours=False,mockobs=True,\
                                   colmap=mymap,label=label,labelaxes=True)
 
@@ -240,14 +243,14 @@ def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,c
         ax.set_ylabel(r'Y [cMpc]',fontsize=fontsize)
         ax.locator_params(axis='y', nticks=3)
         ax.tick_params(labelsize=fontsize) #,top=True,labeltop=True)
-        ax.xaxis.set_label_position('top') 
+        ax.xaxis.set_label_position('top')
         ax.xaxis.tick_top()
     else:
         ax.set_yticklabels([])
         ax.set_xticklabels([])
         ax.set_xticks([])
         ax.set_yticks([])
-        
+
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
 
     img = ax.imshow(SBdata.T,origin='lower',extent=(0,3.7,0,0.7), cmap=cm.get_cmap(colmap), interpolation='nearest')
@@ -261,13 +264,13 @@ def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,c
         cbar.ax.set_xlabel(r'%s' % (clabel), fontsize=fontsize)
         #cbar.ax.set_ylabel(r'%s' % (clabel), fontsize=fontsize)
         cbar.ax.tick_params(labelsize=fontsize)
-    
+
     font = {'family': 'serif',
         'color':  'yellow',
         'weight': 'bold',
         'size': 12,
         }
-    
+
     font = {'family': 'serif',
         'color':  'black',
         'weight': 'bold',
@@ -277,4 +280,3 @@ def makemapfilament(SBdata,ax,colmap='viridis',onlyyellow=False,contours=False,c
     # Bottom middle
 #    ax.text(1.8,0.8,label,fontdict=font,horizontalalignment='center',backgroundcolor='white')
     ax.text(0.98,0.8,label,fontdict=font,horizontalalignment='right',backgroundcolor='white',transform=ax.transAxes)
-
