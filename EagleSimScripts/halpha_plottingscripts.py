@@ -9,7 +9,6 @@ FLEXIBLE AXES -  rect [left, bottom, width, height]; fig.add_axes(rect)
 fig = plt.figure(figsize=(12, 12))
 ax1 = fig.add_axes([0.37, 0.12, 0.40, 0.5])
 
-
 SHARE AXES
 ax2.set_yticklabels([])
 ax2.set_ylabel('')
