@@ -31,6 +31,10 @@ https://matplotlib.org/examples/pylab_examples/fonts_demo.html
 
 BOLD SYMBOLS - use \mathbf and 'r' in front of string like so:
 r'Ly$\mathbf{\alpha}$'
+
+ADD AXIS FOR LABELLING OTHER Y/X AXES
+ax8 = ax3.twinx()
+
 """
 
 ### extract_FOV_and_cutout_galaxies.ipynb
