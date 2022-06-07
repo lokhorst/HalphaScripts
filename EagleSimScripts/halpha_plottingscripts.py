@@ -32,8 +32,17 @@ https://matplotlib.org/examples/pylab_examples/fonts_demo.html
 BOLD SYMBOLS - use \mathbf and 'r' in front of string like so:
 r'Ly$\mathbf{\alpha}$'
 
+BOLD SYMBOLS - the above doesn't always work -- use the following for bold font
+for regular letters and symbols (\textbf and \boldmath)
+ax2.annotate(r'\textbf{H}\boldmath{$\alpha$} \textbf{``shell"}', xy=(1600, 3100), weight='bold',color='grey',
+             xytext=(1700, 3300), fontsize=16, arrowprops=dict(arrowstyle="->", color='grey'))
+
+
 ADD AXIS FOR LABELLING OTHER Y/X AXES
 ax8 = ax3.twinx()
+
+GET AUTOMATIC COLOURS FROM matplotlib
+
 
 """
 
