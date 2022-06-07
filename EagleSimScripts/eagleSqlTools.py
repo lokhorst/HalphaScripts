@@ -3,10 +3,13 @@
 # Module to access the EAGLE public database
 # John Helly 2015 for the Virgo Consortium
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 import numpy as np
-import urllib
-import urllib2
-import cookielib
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
+import http.cookiejar
 import re
 from getpass import getpass
 
@@ -22,14 +25,14 @@ numpy_dtype = {
 
 # Cookie storage - want to avoid creating a new session for every query
 cookie_file = "sql_cookies.txt"
-cookie_jar = cookielib.LWPCookieJar(cookie_file)
+cookie_jar = http.cookiejar.LWPCookieJar(cookie_file)
 try:
     cookie_jar.load(ignore_discard=True)
 except IOError:
     pass
 
 
-class WebDBConnection:
+class WebDBConnection(object):
     def __init__(self, username, password=None):
         """Class to store info required to connect to the web server"""
         # Get password if necessary
@@ -38,17 +41,17 @@ class WebDBConnection:
         # Get URL for the database
         self.db_url = "http://galaxy-catalogue.dur.ac.uk:8080/Eagle"
         # Set up authentication and cookies
-        self.password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        self.password_mgr = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         self.password_mgr.add_password(None, self.db_url, username, password)
-        self.opener = urllib2.OpenerDirector()
-        self.auth_handler   = urllib2.HTTPBasicAuthHandler(self.password_mgr)
-        self.cookie_handler = urllib2.HTTPCookieProcessor(cookie_jar)
+        self.opener = urllib.request.OpenerDirector()
+        self.auth_handler   = urllib.request.HTTPBasicAuthHandler(self.password_mgr)
+        self.cookie_handler = urllib.request.HTTPCookieProcessor(cookie_jar)
 
     def execute_query(self, sql):
         """Run an SQL query and return the result as a record array"""
-        url = self.db_url + "?" + urllib.urlencode({'action': 'doQuery', 'SQL': sql})
-        urllib2.install_opener(urllib2.build_opener(self.auth_handler, self.cookie_handler))
-        response = urllib2.urlopen(url)
+        url = self.db_url + "?" + urllib.parse.urlencode({'action': 'doQuery', 'SQL': sql})
+        urllib.request.install_opener(urllib.request.build_opener(self.auth_handler, self.cookie_handler))
+        response = urllib.request.urlopen(url)
         cookie_jar.save(ignore_discard=True)
 
         # Check for OK response
@@ -91,9 +94,9 @@ class WebDBConnection:
 
     def fetch_docs(self, table):
         """Return a list of strings containing the documentation page for the specified table"""
-        url = self.db_url + "/Help?" + urllib.urlencode({'page': "databases/"+"Eagle"+"/"+table})
-        urllib2.install_opener(urllib2.build_opener(self.auth_handler, self.cookie_handler))
-        response = urllib2.urlopen(url)
+        url = self.db_url + "/Help?" + urllib.parse.urlencode({'page': "databases/"+"Eagle"+"/"+table})
+        urllib.request.install_opener(urllib.request.build_opener(self.auth_handler, self.cookie_handler))
+        response = urllib.request.urlopen(url)
         cookie_jar.save(ignore_discard=True)
         return response.readlines()
 

@@ -162,7 +162,14 @@ def makemap(data,size,ax,colmap='viridis',xystarts = [0.,0.],title = '',colorbar
     ax.patch.set_facecolor(cm.get_cmap(colmap)(0.)) # sets background color to lowest color map value
     
     # nearest neighbour interpolation does not do any averaging, it just picks the nearest point and uses that as the value for a specific section in the image
-    img = ax.imshow(data.T,extent=(xystarts[0],xystarts[0]+xsize,xystarts[1],xystarts[1]+ysize),origin='lower', cmap=cm.get_cmap(colmap),interpolation='nearest') # vmin = None, vmax=Vmax,
+    img = ax.imshow(
+        data.T,
+        extent=(xystarts[0],xystarts[0]+xsize,xystarts[1],xystarts[1]+ysize),
+        origin='lower', 
+        cmap=cm.get_cmap(colmap),
+        interpolation='nearest', 
+        vmin=Vmin, 
+        vmax=Vmax)
     
     #plt.title(label,fontsize=fontsize)
     div = axgrid.make_axes_locatable(ax)
